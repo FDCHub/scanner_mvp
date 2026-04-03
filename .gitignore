@@ -5,21 +5,33 @@ __pycache__/
 # Virtual environment
 venv/
 
+# IDE
+.idea/
+
 # OS
 Thumbs.db
 .DS_Store
 
-# Scanner MVP (critical)
+# Generated / runtime
+logs/
+runtime/
+output/
+backups/
+csv_backups/
+
+# Scanner docs and OCR
 Scans/
 Working/
 Processed/
 Error/
-
-# Documents
 *.pdf
-
-# OCR output
 *.txt
 
-# Logs
-*.log
+# ---- DATA STRATEGY (READ THIS) ----
+# Keep seed/reference data IN Git
+# Track this:
+vendor_seed_table.csv
+
+# Ignore live operational data (recommended)
+document_master_log.csv
+reference_table.csv

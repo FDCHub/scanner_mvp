@@ -1,0 +1,425 @@
+{
+  "Alameda Municipal Power": {
+    "vendor_name_normalized": "Alameda Municipal Power",
+    "vendor_category": "utility",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "account_number",
+    "fallback_match_method": "address",
+    "requires_unit_selection": false,
+    "known_accounts": {
+      "20187-01": {
+        "property": "1423 Central Ave",
+        "unit": "Main"
+      }
+    },
+    "known_properties_used": [
+      "1423 Central Ave"
+    ],
+    "status": "seeded"
+  },
+  "PG&E": {
+    "vendor_name_normalized": "PG&E",
+    "vendor_category": "utility",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "account_number",
+    "fallback_match_method": "address",
+    "requires_unit_selection": false,
+    "known_accounts": {
+      "*632-6": {
+        "property": "3715 Lincoln Ave",
+        "unit": ""
+      }
+    },
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "Comcast": {
+    "vendor_name_normalized": "Comcast",
+    "vendor_category": "utility",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "account_number",
+    "fallback_match_method": "address",
+    "requires_unit_selection": false,
+    "known_accounts": {},
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "East Bay Municipal Utility District": {
+    "vendor_name_normalized": "East Bay Municipal Utility District",
+    "vendor_category": "utility",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "account_number",
+    "fallback_match_method": "address",
+    "requires_unit_selection": false,
+    "known_accounts": {
+      "*9586": {
+        "property": "3715 Lincoln Ave",
+        "unit": ""
+      }
+    },
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "All Pests Experts": {
+    "vendor_name_normalized": "All Pests Experts",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "Crest Construction": {
+    "vendor_name_normalized": "Crest Construction",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "Lacatis Construction": {
+    "vendor_name_normalized": "Lacatis Construction",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "Mayfield & Sons Landscaping": {
+    "vendor_name_normalized": "Mayfield & Sons Landscaping",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "Angel Figuero Hardscaping": {
+    "vendor_name_normalized": "Angel Figuero Hardscaping",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "Leon Carpet Cleaning": {
+    "vendor_name_normalized": "Leon Carpet Cleaning",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "J. Lopez": {
+    "vendor_name_normalized": "J. Lopez",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "ZM Electric": {
+    "vendor_name_normalized": "ZM Electric",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "Quick Key Locksmith": {
+    "vendor_name_normalized": "Quick Key Locksmith",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [],
+    "status": "seeded"
+  },
+  "Alameda Finance Department": {
+    "vendor_name_normalized": "Alameda Finance Department",
+    "vendor_category": "government",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": false,
+    "known_accounts": {},
+    "known_properties_used": [
+      "1423 Central Ave"
+    ],
+    "status": "seeded"
+  },
+  "Alameda County Property Tax": {
+    "vendor_name_normalized": "Alameda County Property Tax",
+    "vendor_category": "government",
+    "multi_property": true,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": false,
+    "known_accounts": {},
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "City of Oakland": {
+    "vendor_name_normalized": "City of Oakland",
+    "vendor_category": "government",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": false,
+    "known_accounts": {},
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "Honeycomb Insurance": {
+    "vendor_name_normalized": "Honeycomb Insurance",
+    "vendor_category": "insurance",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "vendor",
+    "requires_unit_selection": false,
+    "known_accounts": {},
+    "known_properties_used": [
+      "1423 Central Ave"
+    ],
+    "status": "seeded"
+  },
+  "California Form 3537": {
+    "vendor_name_normalized": "California Form 3537",
+    "vendor_category": "government",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "vendor",
+    "requires_unit_selection": false,
+    "known_accounts": {},
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "Alameda Rent Program": {
+    "vendor_name_normalized": "Alameda Rent Program",
+    "vendor_category": "government",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "vendor",
+    "requires_unit_selection": false,
+    "known_accounts": {},
+    "known_properties_used": [
+      "1423 Central Ave"
+    ],
+    "status": "seeded"
+  },
+  "Alameda County Industries": {
+    "vendor_name_normalized": "Alameda County Industries",
+    "vendor_category": "government",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "vendor",
+    "requires_unit_selection": false,
+    "known_accounts": {},
+    "known_properties_used": [
+      "1423 Central Ave"
+    ],
+    "status": "seeded"
+  },
+  "Acme Fire Extinguisher Co. Inc.": {
+    "vendor_name_normalized": "Acme Fire Extinguisher Co. Inc.",
+    "vendor_category": "service",
+    "multi_property": true,
+    "document_types_seen": [
+      "invoice"
+    ],
+    "primary_match_method": "address",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "Hardware Misc": {
+    "vendor_name_normalized": "Hardware Misc",
+    "vendor_category": "supplies",
+    "multi_property": true,
+    "document_types_seen": [
+      "receipt"
+    ],
+    "primary_match_method": "manual",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "Office Misc": {
+    "vendor_name_normalized": "Office Misc",
+    "vendor_category": "supplies",
+    "multi_property": true,
+    "document_types_seen": [
+      "receipt"
+    ],
+    "primary_match_method": "manual",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "GS Insurance": {
+    "vendor_name_normalized": "GS Insurance",
+    "vendor_category": "insurance",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "account_number",
+    "fallback_match_method": "address",
+    "requires_unit_selection": false,
+    "known_accounts": {
+      "1470768": {
+        "property": "3715 Lincoln Ave",
+        "unit": ""
+      }
+    },
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "Waste Management of Alameda County": {
+    "vendor_name_normalized": "Waste Management of Alameda County",
+    "vendor_category": "utility",
+    "multi_property": false,
+    "document_types_seen": [
+      "bill"
+    ],
+    "primary_match_method": "account_number",
+    "fallback_match_method": "address",
+    "requires_unit_selection": false,
+    "known_accounts": {
+      "*3004": {
+        "property": "3715 Lincoln Ave",
+        "unit": ""
+      }
+    },
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  },
+  "Food": {
+    "vendor_name_normalized": "Food",
+    "vendor_category": "supplies",
+    "multi_property": true,
+    "document_types_seen": [
+      "receipt"
+    ],
+    "primary_match_method": "manual",
+    "fallback_match_method": "manual",
+    "requires_unit_selection": true,
+    "known_accounts": {},
+    "known_properties_used": [
+      "3715 Lincoln Ave"
+    ],
+    "status": "seeded"
+  }
+}
