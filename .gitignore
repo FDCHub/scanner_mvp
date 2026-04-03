@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.pyc
+
+# Virtual environment
+venv/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Scanner MVP (critical)
+Scans/
+Working/
+Processed/
+Error/
+
+# Documents
+*.pdf
+
+# OCR output
+*.txt
+
+# Logs
+*.log
