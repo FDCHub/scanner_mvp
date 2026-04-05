@@ -1,0 +1,38 @@
+{
+  "document_types": [
+    "bill",
+    "invoice",
+    "receipt"
+  ],
+  "vendor_categories": [
+    "utility",
+    "service provider",
+    "supplier/store",
+    "handyman services",
+    "insurance",
+    "tax",
+    "HOA",
+    "other"
+  ],
+  "properties": [
+    "1423 Central Ave",
+    "3715 Lincoln Ave",
+    "3047 Sea Marsh Rd"
+  ],
+  "units_by_property": {
+    "1423 Central Ave": ["A","B","C","D","E","F","G","H","I","J","K","House"],
+    "3715 Lincoln Ave": ["1","2","3","4","5","6","7","8","9","10","House"],
+    "3047 Sea Marsh Rd": ["House"]
+  },
+  "payment_statuses": [
+    "unpaid",
+    "paid",
+    "overdue",
+    "partial"
+  ],
+  "accounting_review": [
+    "no",
+    "yes"
+  ],
+  "vendor_categories_by_property": {}
+}
