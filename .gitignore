@@ -35,3 +35,6 @@ vendor_seed_table.csv
 # Ignore live operational data (recommended)
 document_master_log.csv
 reference_table.csv
+.env
+
+*.env

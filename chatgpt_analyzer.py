@@ -1,7 +1,13 @@
-from openai import OpenAI
+import anthropic
 import json
+import os
+from dotenv import load_dotenv
 
-client = OpenAI()
+load_dotenv()
+
+client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+
+MODEL = "claude-haiku-4-5-20251001"
 
 SYSTEM_PROMPT = """
 You are a document data extraction engine.
@@ -69,20 +75,29 @@ def analyze_document(ocr_text: str) -> dict:
         schema=json.dumps(SCHEMA, indent=2)
     )
 
-    response = client.responses.create(
-        model="gpt-4o-mini",
-        input=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=1024,
+        system=SYSTEM_PROMPT,
+        messages=[
             {"role": "user", "content": user_prompt}
         ]
     )
 
-    output_text = response.output_text
+    output_text = response.content[0].text.strip()
+
+    # Strip markdown code fences if Claude wraps the JSON
+    if output_text.startswith("```"):
+        lines = output_text.splitlines()
+        output_text = "\n".join(
+            line for line in lines
+            if not line.strip().startswith("```")
+        ).strip()
 
     try:
         data = json.loads(output_text)
     except Exception:
-        raise ValueError("Invalid JSON returned from ChatGPT")
+        raise ValueError("Invalid JSON returned from Claude")
 
     # Force exact schema shape (no missing fields)
     clean_data = {}

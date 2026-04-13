@@ -20,9 +20,36 @@
     "3047 Sea Marsh Rd"
   ],
   "units_by_property": {
-    "1423 Central Ave": ["A","B","C","D","E","F","G","H","I","J","K","House"],
-    "3715 Lincoln Ave": ["1","2","3","4","5","6","7","8","9","10","House"],
-    "3047 Sea Marsh Rd": ["House"]
+    "1423 Central Ave": [
+      "A",
+      "B",
+      "C",
+      "D",
+      "E",
+      "F",
+      "G",
+      "H",
+      "I",
+      "J",
+      "K",
+      "House"
+    ],
+    "3715 Lincoln Ave": [
+      "1",
+      "2",
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8",
+      "9",
+      "10",
+      "House"
+    ],
+    "3047 Sea Marsh Rd": [
+      "House"
+    ]
   },
   "payment_statuses": [
     "unpaid",

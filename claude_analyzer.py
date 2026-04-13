@@ -31,13 +31,13 @@ MODEL = "claude-haiku-4-5-20251001"   # Fast and cheap for document extraction.
 SYSTEM_PROMPT = """
 You are a document data extraction engine specializing in bills, invoices, and receipts.
 
-Your job is to read the document image carefully and extract structured data.
+Your job is to read the document image carefully and extract every visible data field.
 
 Rules:
 - Return ONLY valid JSON matching the schema provided. No explanations, no markdown.
-- Do not guess — use "" for any field you cannot clearly read.
+- Only leave a field as "" if the information is genuinely absent from the document.
 - Normalize all dates to YYYY-MM-DD format.
-- Amounts must be numeric strings without $ signs (e.g. "125.47").
+- Amounts must be numeric strings without $ signs (e.g. "125.47"). Strip commas.
 - For document_type use only: "bill", "invoice", or "receipt".
 - For confidence scores use only: "high", "medium", or "low".
   - high   = clearly visible and unambiguous on the document
@@ -46,6 +46,17 @@ Rules:
 - In extraction_notes, explain anything unusual, ambiguous, or worth human review.
 - If the document appears to span multiple pages but only one image was provided,
   note this in extraction_notes.
+
+Financial field extraction guide — look for these labels (exact wording varies by vendor):
+- previous_balance    : "Previous Balance", "Prior Balance", "Balance Forward", "Past Due"
+- payments_received   : "Payments Received", "Payment Applied", "Credits Applied", "Payment - Thank You"
+- adjustments_or_credits : "Adjustments", "Credits", "Promotional Credit", "Discount"
+- current_charges     : "Current Charges", "New Charges", "Current Bill", "Charges This Period"
+- late_fees           : "Late Fee", "Late Charge", "Past Due Fee", "Penalty"
+- amount_due          : "Amount Due", "Total Due", "Balance Due", "Total Amount Due", "Please Pay"
+- due_date            : "Due Date", "Payment Due", "Pay By", "Due By"
+
+Extract every financial field you can read — these are the most important fields for this system.
 """
 
 KNOWN_PROPERTIES = """
@@ -72,6 +83,7 @@ SCHEMA = {
     "previous_balance":        "",
     "payments_received":       "",
     "adjustments_or_credits":  "",
+    "current_charges":         "",
     "late_fees":               "",
     "total_balance":           "",
     "payment_status":          "",
@@ -169,7 +181,7 @@ Return ONLY a JSON object matching this exact schema (no extra fields, no markdo
     print(f"  [Claude] Sending to API ({MODEL})...")
     response = client.messages.create(
         model=MODEL,
-        max_tokens=1024,
+        max_tokens=2048,
         system=SYSTEM_PROMPT,
         messages=[
             {
@@ -225,6 +237,174 @@ Return ONLY a JSON object matching this exact schema (no extra fields, no markdo
           f"Amount: '{clean.get('amount_due')}' | "
           f"Date: '{clean.get('bill_date')}'")
 
+    return clean
+
+
+# ── Dynamic-only extraction ───────────────────────────────────────────────────
+# Used when static fields (vendor, account, property, unit, address) are already
+# confirmed via a reference-table match.  Only financial / billing fields are
+# requested, reducing prompt size and Claude latency.
+
+DYNAMIC_SCHEMA = {
+    "document_type":          "",
+    "bill_date":              "",
+    "service_period_start":   "",
+    "service_period_end":     "",
+    "due_date":               "",
+    "amount_due":             "",
+    "previous_balance":       "",
+    "payments_received":      "",
+    "adjustments_or_credits": "",
+    "current_charges":        "",
+    "late_fees":              "",
+    "total_balance":          "",
+    "payment_status":         "",
+    "payment_date":           "",
+    "invoice_number":         "",
+    "description_of_charges": "",
+    "document_image_quality": "",
+    "extraction_notes":       "",
+    "field_confidence": {
+        "amount_due": "",
+        "due_date":   "",
+        "date":       "",
+    },
+}
+
+_DYNAMIC_SYSTEM = """
+You are a document data extraction engine specialising in bills, invoices, and receipts.
+
+The vendor, account number, and property details for this document are ALREADY CONFIRMED.
+Your ONLY task is to extract the financial and billing data fields listed in the schema.
+
+Rules:
+- Return ONLY valid JSON matching the schema exactly. No explanations, no markdown fences.
+- Leave a field as "" only if the information is genuinely absent from the document.
+- Normalize all dates to YYYY-MM-DD format.
+- Amounts must be numeric strings without $ signs (e.g. "125.47"). Strip commas.
+- For document_type use only: "bill", "invoice", or "receipt".
+- For confidence scores use only: "high", "medium", or "low".
+- If "PAID" stamp or text is visible on the document, set payment_status to "paid".
+
+Financial field extraction guide — look for these labels (exact wording varies by vendor):
+- previous_balance    : "Previous Balance", "Prior Balance", "Balance Forward", "Past Due"
+- payments_received   : "Payments Received", "Payment Applied", "Credits Applied", "Payment - Thank You"
+- adjustments_or_credits : "Adjustments", "Credits", "Promotional Credit", "Discount"
+- current_charges     : "Current Charges", "New Charges", "Current Bill", "Charges This Period"
+- late_fees           : "Late Fee", "Late Charge", "Past Due Fee", "Penalty"
+- amount_due          : "Amount Due", "Total Due", "Balance Due", "Total Amount Due", "Please Pay"
+- due_date            : "Due Date", "Payment Due", "Pay By", "Due By"
+
+Extract EVERY financial field you can read — these are the most important fields.
+"""
+
+
+def analyze_document_dynamic(
+    file_path: str | Path,
+    static_context: dict,
+) -> dict:
+    """
+    Extract only dynamic financial fields from a document.
+
+    *static_context* contains the already-known canonical values pulled from the
+    reference table (vendor_name, account_number, property, unit, service_address,
+    vendor_category).  Claude is told these are confirmed so it can focus entirely
+    on the billing / financial data.
+
+    Returns a dict that merges the dynamic extraction with the provided static
+    context, ready to be used as a drop-in replacement for analyze_document().
+    """
+    file_path = Path(file_path)
+    if not file_path.exists():
+        raise FileNotFoundError(f"Document not found: {file_path}")
+
+    print(f"  [Claude/dynamic] Preparing image from: {file_path.name}")
+    image_data, media_type = _prepare_image(file_path)
+
+    ctx_lines = []
+    for key, label in [
+        ("vendor_name",    "Vendor"),
+        ("account_number", "Account"),
+        ("property",       "Property"),
+        ("unit",           "Unit"),
+        ("service_address","Service Address"),
+    ]:
+        val = static_context.get(key, "")
+        if val:
+            ctx_lines.append(f"  {label}: {val}")
+
+    context_block = "\n".join(ctx_lines) if ctx_lines else "  (not provided)"
+
+    user_prompt = f"""
+Known account details (already confirmed — do NOT re-extract these fields):
+{context_block}
+
+Extract ONLY the financial / billing data from this document.
+Return ONLY a JSON object matching this exact schema (no extra fields, no markdown):
+
+{json.dumps(DYNAMIC_SCHEMA, indent=2)}
+"""
+
+    print(f"  [Claude/dynamic] Sending to API ({MODEL}) — financial fields only...")
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=1024,
+        system=_DYNAMIC_SYSTEM,
+        messages=[{
+            "role": "user",
+            "content": [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": media_type,
+                        "data": image_data,
+                    },
+                },
+                {"type": "text", "text": user_prompt},
+            ],
+        }],
+    )
+
+    raw_text = response.content[0].text.strip()
+    if raw_text.startswith("```"):
+        raw_text = "\n".join(
+            l for l in raw_text.splitlines() if not l.strip().startswith("```")
+        ).strip()
+
+    try:
+        data = json.loads(raw_text)
+    except json.JSONDecodeError as e:
+        raise ValueError(
+            f"Claude (dynamic) returned invalid JSON: {e}\n\nRaw:\n{raw_text}"
+        )
+
+    # Build clean dynamic result from schema
+    clean: dict = {}
+    for field, default in DYNAMIC_SCHEMA.items():
+        if field == "field_confidence":
+            conf_raw = data.get("field_confidence", {})
+            clean["field_confidence"] = {
+                k: conf_raw.get(k, "") for k in DYNAMIC_SCHEMA["field_confidence"]
+            }
+        else:
+            clean[field] = data.get(field, default)
+
+    # Merge in the confirmed static fields
+    clean["vendor_name_raw"]        = static_context.get("vendor_name", "")
+    clean["vendor_name_normalized"] = static_context.get("vendor_name", "")
+    clean["vendor_category"]        = static_context.get("vendor_category", "")
+    clean["account_number"]         = static_context.get("account_number", "")
+    clean["property"]               = static_context.get("property", "")
+    clean["unit"]                   = static_context.get("unit", "")
+    clean["service_address"]        = static_context.get("service_address", "")
+
+    print(
+        f"  [Claude/dynamic] Done. "
+        f"Amount: '{clean.get('amount_due')}' | "
+        f"Due: '{clean.get('due_date')}' | "
+        f"Date: '{clean.get('bill_date')}'"
+    )
     return clean
 
 

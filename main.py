@@ -9,7 +9,9 @@ from startup.startup_diagnostics import run_startup_diagnostics
 from intake.scan_intake_watcher import ScanIntakeWatcher
 
 # Standard / external
+import os
 from pathlib import Path
+import json
 import shutil
 from PyPDF2 import PdfReader
 from pdf2image import convert_from_path
@@ -22,10 +24,9 @@ from document_intelligence import (
 )
 from modules.reference_matcher import load_reference_table, reference_check
 
-from chatgpt_analyzer import analyze_document
+from claude_analyzer import analyze_document
 from new_doc_detector import is_new_document
 from confidence_scorer import score_document
-from user_review import review_extracted_data
 from vendor_profile_store import load_vendor_profiles, upsert_vendor_profile
 from csv_manager import (
     initialize_csv_files,
@@ -205,7 +206,7 @@ def print_final_document_summary(
     result: dict,
     confidence: dict,
     new_doc: bool,
-    chatgpt_used: bool,
+    claude_used: bool,
     renamed_pdf_path,
 ) -> None:
     print("\n=== FINAL DOCUMENT SUMMARY ===")
@@ -220,11 +221,11 @@ def print_final_document_summary(
     print(f"Confidence:     {confidence.get('score', 'UNKNOWN')}")
     print(f"Decision:       {confidence.get('decision', 'UNKNOWN')}")
     print(f"New Document:   {'yes' if new_doc else 'no'}")
-    print(f"ChatGPT Used:   {'yes' if chatgpt_used else 'no'}")
+    print(f"Claude Used:    {'yes' if claude_used else 'no'}")
     print(f"Final File:     {str(renamed_pdf_path) if renamed_pdf_path else 'NOT RENAMED'}")
     print("================================\n")
 
-def handle_scan_job(scan_job, get_reference_table) -> None:
+def handle_scan_job(scan_job, get_reference_table, on_review=None) -> None:
     source = scan_job.source_path
     working_folder = Path("D:/Scans/Working")
     error_folder = Path("D:/Scans/Error")
@@ -322,11 +323,10 @@ def handle_scan_job(scan_job, get_reference_table) -> None:
             print(f"Closest known account: {similar_account_match}")
             print(f"Similarity: {similar_account_score:.0%}")
 
-            confirm_similar = input(
-                "Use existing known account instead? [y = yes / n = no, treat as new]: "
-            ).strip().lower()
-
-            if confirm_similar == "y":
+            # Auto-accept very high similarity matches; otherwise treat as new account.
+            # The web dashboard review step lets the user correct anything that looks wrong.
+            if similar_account_score >= 0.97:
+                confirm_similar = "y"
                 result["account_number"] = similar_account_match
                 account_number = similar_account_match
                 is_new_account = False
@@ -343,9 +343,10 @@ def handle_scan_job(scan_job, get_reference_table) -> None:
                     if not result.get("category") and matched_account_data.get("category"):
                         result["category"] = matched_account_data.get("category")
 
-                print(f"Account number corrected to: {similar_account_match}")
+                print(f"Auto-corrected account number to: {similar_account_match} (similarity {similar_account_score:.0%})")
             else:
-                print("Keeping extracted account number and treating as new account.")
+                confirm_similar = "n"
+                print("Treating as new account (similarity below threshold).")
 
         reference_match_found = bool(
             decision.get("property_name") or decision.get("unit") or decision.get("category")
@@ -374,19 +375,19 @@ def handle_scan_job(scan_job, get_reference_table) -> None:
         print("Confidence:", confidence)
         print("Is new document:", new_doc)
 
-        chatgpt_used = bool(new_doc or confidence["decision"] == "review")
+        claude_used = bool(new_doc or confidence["decision"] == "review")
 
         if new_doc or confidence["decision"] == "review":
-            print("\nTriggering ChatGPT analysis...\n")
+            print("\nTriggering Claude analysis...\n")
 
             try:
-                ai_result = analyze_document(ocr_text)
-                print("ChatGPT extracted data:", ai_result)
+                ai_result = analyze_document(destination)
+                print("Claude extracted data:", ai_result)
             except Exception as ai_error:
-                print(f"ChatGPT failed: {ai_error}")
+                print(f"Claude failed: {ai_error}")
 
                 log_processing_event({
-                    "status": "chatgpt_error",
+                    "status": "claude_error",
                     "source_file": source.name,
                     "error_message": str(ai_error),
                 })
@@ -416,31 +417,48 @@ def handle_scan_job(scan_job, get_reference_table) -> None:
                 )
                 ai_result["vendor_category"] = infer_vendor_category(ai_result)
 
-                reviewed = review_extracted_data(ai_result)
+                # Queue for web dashboard review instead of prompting in the terminal.
+                # Write a sidecar JSON next to the PDF in Incoming so app.py picks it up.
+                review_data = ai_result.copy()
+                review_data["_working_path"] = str(source)
+                review_data["_filename"] = source.name
+                review_data["_confidence"] = confidence.get("decision", "medium")
+                review_data["_confidence_score"] = confidence.get("score", 0)
 
-                if reviewed.get("user_confirmed") is True:
-                    print("User confirmed extracted data.")
+                # Write the sidecar atomically: write to a .tmp file, then
+                # rename into place.  This prevents get_queue() from reading a
+                # partially-written JSON file (which would cause a JSONDecodeError
+                # and silently drop the document from the review queue).
+                sidecar_path = source.parent / (source.name + ".review.json")
+                sidecar_tmp  = sidecar_path.with_suffix(".tmp")
+                with open(sidecar_tmp, "w", encoding="utf-8") as sidecar_file:
+                    json.dump(review_data, sidecar_file, indent=2, default=str)
+                os.replace(str(sidecar_tmp), str(sidecar_path))  # atomic on Win + POSIX
 
-                    result = apply_ai_result_to_local_result(result, reviewed)
+                # Move PDF back to Incoming so the web dashboard can serve it
+                shutil.move(str(destination), str(source))
 
-                    reference_record = {
-                        "vendor_name": result.get("vendor", ""),
-                        "account_number": result.get("account_number", ""),
-                        "vendor_category": result.get("category", ""),
-                        "property": result.get("property", ""),
-                        "unit": result.get("unit", ""),
-                        "service_address": result.get("service_address", ""),
-                    }
-                    upsert_reference_record(reference_record)
-                    print("Updated reference_table.csv")
+                # Remove the OCR text file — no longer needed
+                if ocr_text_path.exists():
+                    ocr_text_path.unlink()
 
-                    vendor_name_reviewed = reviewed.get("vendor_name_normalized", "") or reviewed.get("vendor", "")
-                    if vendor_name_reviewed:
-                        profile = build_vendor_profile(reviewed)
-                        upsert_vendor_profile(vendor_name_reviewed, profile)
-                        print(f"Saved vendor profile for: {vendor_name_reviewed}")
-                else:
-                    print("User did not confirm extracted data. Leaving local result unchanged.")
+                print(f"Document queued for web review: {source.name}")
+                print("Open the web dashboard at http://localhost:5000 to review.")
+
+                # Directly update the in-memory queue so the dashboard picks
+                # up the review item immediately (no polling delay).
+                if on_review is not None:
+                    try:
+                        on_review(source.name, str(source), review_data)
+                    except Exception as _cb_err:
+                        print(f"[Watcher] on_review callback failed: {_cb_err}")
+
+                log_processing_event({
+                    "status": "queued_for_web_review",
+                    "source_file": source.name,
+                    "vendor": ai_result.get("vendor_name_normalized", ""),
+                })
+                return
 
         renamed_pdf_path = rename_processed_file(ocr_text_path, result)
 
@@ -453,7 +471,7 @@ def handle_scan_job(scan_job, get_reference_table) -> None:
             result=result,
             confidence=confidence,
             new_doc=new_doc,
-            chatgpt_used=chatgpt_used,
+            claude_used=claude_used,
             renamed_pdf_path=renamed_pdf_path
         )
         master_record = {
@@ -482,7 +500,7 @@ def handle_scan_job(scan_job, get_reference_table) -> None:
             "output_file": str(renamed_pdf_path) if renamed_pdf_path else "",
             "final_storage_path": str(final_storage_path) if final_storage_path else "",
             "confidence_score": confidence.get("score", ""),
-            "chatgpt_used": chatgpt_used,
+            "claude_used": claude_used,
         }
 
         print("\n--- MASTER RECORD DEBUG ---")
@@ -516,7 +534,7 @@ def handle_scan_job(scan_job, get_reference_table) -> None:
             "new_document": new_doc,
             "confidence_score": confidence.get("score"),
             "confidence_decision": confidence.get("decision"),
-            "chatgpt_used": bool(new_doc or confidence["decision"] == "review"),
+            "claude_used": bool(new_doc or confidence["decision"] == "review"),
             "renamed_pdf_path": str(renamed_pdf_path) if renamed_pdf_path else "",
         })
 

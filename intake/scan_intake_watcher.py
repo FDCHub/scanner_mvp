@@ -13,9 +13,29 @@ from models.shared_models import ScanJob
 class ScanIntakeWatcher:
     def __init__(self, incoming_folder: Path | None = None):
         self.incoming_folder = incoming_folder or AppConfig.INCOMING_SCAN_FOLDER
-        self._seen: Set[str] = set()
+
+        # Pre-seed _seen with every PDF that already exists in Incoming at
+        # startup time.  This means the watcher will ONLY trigger on files
+        # that arrive AFTER the app starts — existing files are left as
+        # "pending" in the queue for the user to process manually via
+        # "Process This Doc" / "Process All Docs".
+        self._seen: Set[str] = {
+            str(p.resolve())
+            for p in self.incoming_folder.glob("*.pdf")
+            if p.is_file()
+        }
+        if self._seen:
+            print(
+                f"[Watcher] {len(self._seen)} pre-existing file(s) in Incoming "
+                f"will appear as pending — not auto-processed."
+            )
 
     def poll_once(self, callback: Callable[[ScanJob], None]) -> int:
+        """
+        Check Incoming for PDFs not yet seen.  Only files that were added
+        AFTER __init__ ran (i.e. not in self._seen) are processed.
+        Returns the number of new files dispatched to the callback.
+        """
         count = 0
 
         for path in sorted(self.incoming_folder.glob("*.pdf")):

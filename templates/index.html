@@ -8,7 +8,7 @@
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; font-size: 14px; }
 
-  /* Layout */
+  /* ── Header ───────────────────────────────────────────────── */
   .header { background: #1a1a1a; color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
   .header h1 { font-size: 16px; font-weight: 500; letter-spacing: 0.05em; }
   .status-pills { display: flex; gap: 8px; }
@@ -17,29 +17,62 @@
   .pill.warn { background: #b45309; color: #fff; }
   .pill.err  { background: #991b1b; color: #fff; }
 
-  .main { display: grid; grid-template-columns: 1fr 340px; gap: 16px; padding: 16px 24px; max-width: 1400px; margin: 0 auto; }
+  /* ── Summary stats bar ────────────────────────────────────── */
+  .stats-bar { background: #fff; border-bottom: 1px solid #e5e5e0; padding: 10px 24px; display: flex; gap: 24px; align-items: center; }
+  .stat-item { display: flex; align-items: center; gap: 10px; }
+  .stat-value { font-size: 20px; font-weight: 700; line-height: 1; }
+  .stat-value.filed   { color: #1a7a4a; }
+  .stat-value.unpaid  { color: #b45309; }
+  .stat-value.overdue { color: #991b1b; }
+  .stat-value.amount  { color: #1a1a1a; }
+  .stat-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .stat-divider { width: 1px; height: 30px; background: #e5e5e0; }
 
+  /* ── Layout ───────────────────────────────────────────────── */
+  .main { display: grid; grid-template-columns: 1fr 340px; gap: 16px; padding: 16px 24px; max-width: 1400px; margin: 0 auto; }
   .card { background: #fff; border: 1px solid #e5e5e0; border-radius: 10px; padding: 16px; }
   .card-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #888; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
 
-  /* Drop zone */
-  .drop-zone { border: 2px dashed #d0d0c8; border-radius: 8px; padding: 28px 20px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; color: #888; margin-bottom: 12px; }
+  /* ── Add Documents — two-panel ────────────────────────────── */
+  .add-docs-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .panel-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+
+  /* ── Drop zone ────────────────────────────────────────────── */
+  .drop-zone { border: 2px dashed #d0d0c8; border-radius: 8px; padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; color: #888; height: 158px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .drop-zone:hover, .drop-zone.drag-over { border-color: #1a7a4a; background: #f0faf4; color: #1a7a4a; }
-  .drop-zone p { font-size: 13px; margin-top: 6px; }
+  .drop-zone p { font-size: 12px; margin-top: 6px; }
   .drop-zone input { display: none; }
 
-  /* Buttons */
+  /* ── File browser ─────────────────────────────────────────── */
+  .file-browser-wrap { display: flex; flex-direction: column; gap: 4px; }
+  .file-browser { border: 1px solid #d0d0c8; border-radius: 8px; height: 158px; overflow-y: auto; background: #fafaf8; display: flex; flex-direction: column; }
+  .browser-path-bar { font-size: 10px; color: #555; padding: 4px 8px; background: #f0f0e8; border-bottom: 1px solid #e5e5e0; border-radius: 8px 8px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+  .browser-list { flex: 1; overflow-y: auto; padding: 2px 0; }
+  .browser-item { display: flex; align-items: center; gap: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; user-select: none; }
+  .browser-item:hover { background: #e8f5ee; }
+  .browser-item.selected { background: #d1fae5; }
+  .browser-item.up-dir { color: #888; }
+  .browser-item.dir { color: #1a1a1a; font-weight: 500; }
+  .browser-icon { font-size: 12px; flex-shrink: 0; }
+  .browser-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .browser-footer { display: flex; align-items: center; justify-content: space-between; }
+  .browser-sel-count { font-size: 11px; color: #888; }
+
+  /* ── Buttons ─────────────────────────────────────────────── */
   .btn { padding: 7px 14px; border-radius: 6px; border: 1px solid #d0d0c8; background: #fff; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.12s; }
   .btn:hover { background: #f5f5f0; }
   .btn.primary { background: #1a1a1a; color: #fff; border-color: #1a1a1a; }
   .btn.primary:hover { background: #333; }
   .btn.green { background: #1a7a4a; color: #fff; border-color: #1a7a4a; }
   .btn.green:hover { background: #155c38; }
+  .btn.danger { background: #991b1b; color: #fff; border-color: #991b1b; }
+  .btn.danger:hover { background: #7f1d1d; }
   .btn.sm { padding: 4px 10px; font-size: 12px; }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-  /* Queue */
-  .queue-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #e5e5e0; border-radius: 6px; margin-bottom: 6px; background: #fafaf8; }
+  /* ── Queue items ─────────────────────────────────────────── */
+  .queue-item { padding: 8px 10px; border: 1px solid #e5e5e0; border-radius: 6px; margin-bottom: 6px; background: #fafaf8; }
+  .queue-item-header { display: flex; align-items: center; gap: 10px; }
   .queue-item .name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
   .badge.pending    { background: #e5e5e0; color: #555; }
@@ -47,15 +80,46 @@
   .badge.review     { background: #fef3c7; color: #92400e; }
   .badge.filed      { background: #d1fae5; color: #065f46; }
   .badge.error      { background: #fee2e2; color: #991b1b; }
+  .badge.overdue    { background: #fee2e2; color: #991b1b; }
+  .badge.paid       { background: #d1fae5; color: #065f46; }
+  .badge.unpaid     { background: #fef3c7; color: #92400e; }
+  .badge.partial    { background: #dbeafe; color: #1d4ed8; }
 
-  /* Progress bar */
+  /* ── Stage progress bar (per queue item) ─────────────────── */
+  .stage-bar { display: flex; margin-top: 8px; border-radius: 6px; overflow: hidden; border: 1px solid #c7d2fe; height: 34px; }
+  .stage-seg {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 600; color: #bbb; background: #f5f5f0;
+    border-right: 1px solid #e5e5e0; transition: background 0.3s, color 0.3s;
+    letter-spacing: 0.02em; gap: 4px;
+  }
+  .stage-seg:last-child { border-right: none; }
+  .stage-seg.done   { background: #d1fae5; color: #065f46; }
+  .stage-seg.done::before { content: '✓ '; }
+  .stage-seg.active {
+    background: #2563eb; color: #fff; font-weight: 700;
+    animation: stagePulse 1s ease-in-out infinite;
+    box-shadow: inset 0 0 0 2px rgba(255,255,255,0.25);
+  }
+  .stage-current-label {
+    font-size: 11px; font-weight: 600; color: #2563eb;
+    margin-top: 5px; display: flex; align-items: center; gap: 5px;
+  }
+  .stage-current-label::before {
+    content: ''; display: inline-block; width: 7px; height: 7px;
+    border-radius: 50%; background: #2563eb;
+    animation: stagePulse 1s ease-in-out infinite;
+  }
+  @keyframes stagePulse { 0%,100% { opacity:1; } 50% { opacity:0.55; } }
+
+  /* ── Global progress bar ─────────────────────────────────── */
   .progress-wrap { margin: 10px 0; display: none; }
   .progress-wrap.active { display: block; }
   .progress-bar { height: 6px; background: #e5e5e0; border-radius: 3px; overflow: hidden; }
   .progress-fill { height: 100%; background: #1a7a4a; border-radius: 3px; transition: width 0.4s; width: 0%; }
   .progress-label { font-size: 12px; color: #888; margin-top: 4px; }
 
-  /* Activity feed */
+  /* ── Activity feed ───────────────────────────────────────── */
   .activity-item { padding: 6px 0; border-bottom: 1px solid #f0f0e8; font-size: 12px; display: flex; gap: 8px; }
   .activity-item:last-child { border-bottom: none; }
   .activity-time { color: #aaa; min-width: 48px; }
@@ -63,23 +127,35 @@
   .activity-item.error   .activity-msg { color: #991b1b; }
   .activity-item.warning .activity-msg { color: #92400e; }
 
-  /* Review queue */
+  /* ── Review queue ────────────────────────────────────────── */
   .review-item { padding: 10px; border: 1px solid #fde68a; border-radius: 6px; background: #fffbeb; margin-bottom: 8px; cursor: pointer; transition: background 0.12s; }
   .review-item:hover { background: #fef3c7; }
   .review-item .rv-vendor { font-weight: 500; font-size: 13px; }
   .review-item .rv-meta   { font-size: 12px; color: #888; margin-top: 2px; }
 
-  /* Modal */
+  /* ── Filter bar ──────────────────────────────────────────── */
+  .filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; padding: 8px 10px; background: #f8f8f6; border: 1px solid #e5e5e0; border-radius: 8px; align-items: center; }
+  .filter-bar input, .filter-bar select { padding: 4px 8px; border: 1px solid #d0d0c8; border-radius: 5px; font-size: 12px; font-family: inherit; height: 28px; }
+  .filter-bar input:focus, .filter-bar select:focus { outline: none; border-color: #1a7a4a; }
+  .filter-bar input { width: 130px; }
+  .filter-bar input.date-input { width: 115px; }
+  .filter-bar input.amount-input { width: 70px; }
+  .filter-bar select { width: 110px; }
+  .filter-bar select#filter-search { width: 170px; }
+  .filter-bar .filter-label { font-size: 10px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
+  .filter-bar .filter-divider { width: 1px; height: 20px; background: #e5e5e0; }
+
+  /* ── Modal ───────────────────────────────────────────────── */
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
   .modal-backdrop.open { display: flex; }
-  .modal { background: #fff; border-radius: 12px; width: 560px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-  .modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e5e0; display: flex; align-items: center; justify-content: space-between; }
+  .modal { background: #fff; border-radius: 12px; width: 580px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e5e0; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 5; }
   .modal-header h2 { font-size: 15px; font-weight: 500; }
   .modal-body { padding: 20px; }
-  .modal-footer { padding: 12px 20px; border-top: 1px solid #e5e5e0; display: flex; gap: 8px; justify-content: flex-end; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid #e5e5e0; display: flex; gap: 8px; justify-content: flex-end; position: sticky; bottom: 0; background: #fff; }
   .close-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #888; line-height: 1; }
 
-  /* Form fields in modal */
+  /* ── Modal form fields ───────────────────────────────────── */
   .field-group { margin-bottom: 12px; }
   .field-group label { display: block; font-size: 11px; font-weight: 600; color: #888; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 4px; }
   .field-group input, .field-group select { width: 100%; padding: 7px 10px; border: 1px solid #d0d0c8; border-radius: 6px; font-size: 13px; font-family: inherit; }
@@ -87,29 +163,53 @@
   .field-group input.conf-high   { border-color: #1a7a4a; background: #f0faf4; }
   .field-group input.conf-medium { border-color: #d97706; background: #fffbeb; }
   .field-group input.conf-low    { border-color: #dc2626; background: #fff5f5; }
+  .field-group select.conf-high   { border-color: #1a7a4a; background: #f0faf4; }
+  .field-group select.conf-medium { border-color: #d97706; background: #fffbeb; }
+  .field-group select.conf-low    { border-color: #dc2626; background: #fff5f5; }
   .conf-legend { display: flex; gap: 12px; font-size: 11px; color: #888; margin-bottom: 16px; }
   .conf-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 4px; }
   .conf-dot.high   { background: #1a7a4a; }
   .conf-dot.medium { background: #d97706; }
   .conf-dot.low    { background: #dc2626; }
 
+  /* ── Reference match banner ──────────────────────────────── */
+  .ref-match-banner { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#f0faf4; border:1px solid #1a7a4a; border-radius:6px; margin-bottom:14px; font-size:12px; color:#155c38; }
+  .ref-match-banner svg { flex-shrink:0; }
+
+  /* ── Modal section divider ───────────────────────────────── */
+  .modal-divider { height: 1px; background: #e5e5e0; margin: 16px 0; }
+
+  /* ── Account history panel ───────────────────────────────── */
+  .acct-history-panel { background: #f8f8f6; border: 1px solid #e5e5e0; border-radius: 8px; padding: 12px; }
+  .acct-history-title { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+  .history-row { display: flex; gap: 10px; font-size: 12px; margin-bottom: 6px; }
+  .history-lbl { color: #888; min-width: 100px; }
+  .history-val { font-weight: 500; }
+
+  /* ── Warning banners ─────────────────────────────────────── */
+  .dup-warning      { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; margin-top:8px; font-size:12px; color:#856404; font-weight:500; }
+  .overdue-warning  { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#fee2e2; border:1px solid #fca5a5; border-radius:6px; margin-top:8px; font-size:12px; color:#991b1b; font-weight:500; }
+
   .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-  /* Right column */
   .right-col { display: flex; flex-direction: column; gap: 16px; }
-
-  /* Empty state */
   .empty { text-align: center; color: #bbb; padding: 24px 0; font-size: 13px; }
 
-  /* Tabs */
-  .tab-bar { display: flex; gap: 2px; margin-bottom: 12px; }
-  .tab { padding: 5px 12px; border-radius: 5px; cursor: pointer; font-size: 12px; font-weight: 500; color: #888; }
-  .tab.active { background: #1a1a1a; color: #fff; }
+  /* ── Recent docs overdue row ─────────────────────────────── */
+  tr.overdue-row td { background: #fff5f5 !important; }
+
+  /* ── Edit modal audit info ───────────────────────────────── */
+  .audit-info { background: #f8f8f6; border: 1px solid #e5e5e0; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #888; margin-bottom: 14px; }
+  .audit-info strong { color: #555; }
+
+  /* ── File move confirmation ──────────────────────────────── */
+  .path-box { border-radius: 6px; padding: 10px 12px; font-size: 11px; font-family: 'Consolas', 'Monaco', monospace; word-break: break-all; margin-bottom: 8px; line-height: 1.5; }
+  .path-box.from { background: #fff5f5; border: 1px solid #fca5a5; color: #7f1d1d; }
+  .path-box.to   { background: #f0faf4; border: 1px solid #6ee7b7; color: #065f46; }
 </style>
 </head>
 <body>
 
-<!-- Header -->
+<!-- ── Header ─────────────────────────────────────────────── -->
 <div class="header">
   <h1>Scanner MVP</h1>
   <div style="display:flex;align-items:center;gap:16px;">
@@ -123,28 +223,80 @@
   </div>
 </div>
 
+<!-- ── Summary Stats Bar ──────────────────────────────────── -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <div>
+      <div class="stat-value filed" id="stat-total-filed">0</div>
+      <div class="stat-label">Total Filed</div>
+    </div>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat-item">
+    <div>
+      <div class="stat-value unpaid" id="stat-unpaid-count">0</div>
+      <div class="stat-label">Unpaid Bills</div>
+    </div>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat-item">
+    <div>
+      <div class="stat-value amount" id="stat-unpaid-amount">$0.00</div>
+      <div class="stat-label">Outstanding Amount</div>
+    </div>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat-item">
+    <div>
+      <div class="stat-value overdue" id="stat-overdue-count">0</div>
+      <div class="stat-label">Overdue Bills</div>
+    </div>
+  </div>
+  <div class="stat-divider"></div>
+  <div class="stat-item" style="flex-direction:column;align-items:flex-start;gap:3px;">
+    <div class="stat-label">Filter by Property</div>
+    <select id="stats-property-filter" onchange="refreshStats()" title="Show stats for one property"
+            style="font-size:12px;padding:3px 8px;border:1px solid #d0d0c8;border-radius:5px;font-family:inherit;height:26px;background:#fff;">
+      <option value="">All Properties</option>
+    </select>
+  </div>
+</div>
+
 <div class="main">
-  <!-- Left column -->
+  <!-- ── Left column ──────────────────────────────────────── -->
   <div>
 
-    <!-- Add Documents -->
+    <!-- Add Documents — two-panel -->
     <div class="card" style="margin-bottom:16px;">
       <div class="card-title">Add documents</div>
-      <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto;display:block;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-        <p>Drag &amp; drop files here, or click to browse</p>
-        <p style="font-size:11px;margin-top:4px;">PDF, JPG, PNG supported</p>
-        <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(this.files)">
-      </div>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button class="btn green" id="process-btn" onclick="processAll()" style="flex:1;">
-          ▶ Start processing
-        </button>
-        <button class="btn sm" onclick="refreshQueue()">↻ Refresh</button>
-      </div>
-      <div class="progress-wrap" id="progress-wrap">
-        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-        <div class="progress-label" id="progress-label">Processing...</div>
+      <div class="add-docs-panels">
+
+        <!-- Left: drag & drop -->
+        <div>
+          <div class="panel-label">Upload files</div>
+          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <p>Drag &amp; drop or click to browse</p>
+            <p style="font-size:11px;margin-top:4px;">PDF, JPG, PNG</p>
+            <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(this.files)">
+          </div>
+        </div>
+
+        <!-- Right: file browser -->
+        <div class="file-browser-wrap">
+          <div class="panel-label">Browse folder</div>
+          <div class="file-browser" id="file-browser">
+            <div class="browser-path-bar" id="browser-path-bar">D:/Scans/Incoming</div>
+            <div class="browser-list" id="browser-list">
+              <div class="empty" style="padding:14px 0;font-size:12px;">Loading…</div>
+            </div>
+          </div>
+          <div class="browser-footer">
+            <span class="browser-sel-count" id="browser-sel-count">0 selected</span>
+            <button class="btn sm green" id="browser-add-btn" onclick="addBrowserFiles()" disabled>Add To Queue</button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -153,6 +305,14 @@
       <div class="card-title">
         Incoming queue
         <span id="queue-count" style="font-weight:400;color:#bbb;">0 files</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <button class="btn green" id="process-btn" onclick="processAll()" style="flex:1;">▶ Process All Docs</button>
+        <button class="btn sm" onclick="refreshQueue()">↻ Refresh</button>
+      </div>
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+        <div class="progress-label" id="progress-label">Processing…</div>
       </div>
       <div id="queue-list">
         <div class="empty">No files in queue — drop files above or wait for scanner</div>
@@ -170,31 +330,59 @@
       </div>
     </div>
 
-    <!-- Recent Documents Tab -->
+    <!-- Recent Documents -->
     <div class="card">
-      <div class="card-title">Recent documents</div>
+      <div class="card-title">
+        Recent documents
+        <span id="recent-count" style="font-weight:400;color:#bbb;"></span>
+      </div>
+
+      <!-- Filter bar -->
+      <div class="filter-bar">
+        <span class="filter-label">Filter:</span>
+        <select id="filter-search" onchange="applyFilters()" title="Filter by vendor">
+          <option value="">All vendors</option>
+        </select>
+        <select id="filter-property" onchange="applyFilters()" title="Filter by property">
+          <option value="">All properties</option>
+        </select>
+        <span class="filter-divider"></span>
+        <span class="filter-label">Date:</span>
+        <input type="date" id="filter-date-from" class="date-input" oninput="applyFilters()" title="From date">
+        <input type="date" id="filter-date-to"   class="date-input" oninput="applyFilters()" title="To date">
+        <span class="filter-divider"></span>
+        <span class="filter-label">$:</span>
+        <input id="filter-amt-min" class="amount-input" placeholder="Min" oninput="applyFilters()" title="Min amount">
+        <input id="filter-amt-max" class="amount-input" placeholder="Max" oninput="applyFilters()" title="Max amount">
+        <select id="filter-status" onchange="applyFilters()" title="Payment status">
+          <option value="">All statuses</option>
+          <option value="unpaid">Unpaid</option>
+          <option value="paid">Paid</option>
+          <option value="overdue">Overdue</option>
+          <option value="partial">Partial</option>
+        </select>
+        <button class="btn sm" onclick="clearFilters()" title="Clear all filters">✕ Clear</button>
+      </div>
+
       <div id="recent-list">
-        <div class="empty">Loading...</div>
+        <div class="empty">Loading…</div>
       </div>
     </div>
 
   </div>
 
-  <!-- Right column -->
+  <!-- ── Right column ─────────────────────────────────────── -->
   <div class="right-col">
-
-    <!-- Activity Feed -->
     <div class="card">
       <div class="card-title">Activity</div>
       <div id="activity-list">
         <div class="empty">No activity yet</div>
       </div>
     </div>
-
   </div>
 </div>
 
-<!-- Review Modal -->
+<!-- ── Review Modal ───────────────────────────────────────── -->
 <div class="modal-backdrop" id="review-modal">
   <div class="modal">
     <div class="modal-header">
@@ -211,7 +399,7 @@
     </div>
     <div class="modal-footer">
       <button class="btn" onclick="rejectDocument()">✕ Reject</button>
-      <button class="btn green" onclick="confirmDocument()">✓ Confirm &amp; file</button>
+      <button class="btn green" onclick="confirmDocument()">✓ Confirm &amp; File</button>
     </div>
   </div>
 </div>
@@ -220,19 +408,96 @@
   let currentFilename = null;
   let currentResult   = null;
   let pollInterval    = null;
+  let canonicalValues = {
+    properties: [],
+    units_by_property: {},
+    vendor_categories: [],
+    service_addresses_by_property: {},
+    account_address_map: [],
+    document_types: ['bill','invoice','receipt'],
+    payment_statuses: ['unpaid','paid','overdue','partial'],
+  };
+
+  // Promise cache — ensures canonical values are only fetched once per session
+  // (unless explicitly invalidated with _cvPromise = null)
+  let _cvPromise = null;
+  function ensureCanonicalValues() {
+    if (!_cvPromise) {
+      _cvPromise = fetch('/api/canonical-values')
+        .then(r => r.json())
+        .then(cv => {
+          if (cv) {
+            canonicalValues = cv;
+            // Populate filter-property dropdown in recent docs filter bar
+            const sel = document.getElementById('filter-property');
+            if (sel && !sel.dataset.populated) {
+              (cv.properties || []).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p; opt.textContent = p;
+                sel.appendChild(opt);
+              });
+              sel.dataset.populated = '1';
+            }
+            // Populate stats-property-filter in the summary stats bar
+            const statsSel = document.getElementById('stats-property-filter');
+            if (statsSel && !statsSel.dataset.populated) {
+              (cv.properties || []).forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p; opt.textContent = p;
+                statsSel.appendChild(opt);
+              });
+              statsSel.dataset.populated = '1';
+            }
+          }
+          return canonicalValues;
+        })
+        .catch(() => canonicalValues);
+    }
+    return _cvPromise;
+  }
+
+  // Per-file stage tracking
+  let fileStages = {};
+
+  // File browser state
+  let browserSelectedFiles = new Set();
+
+  // Recent documents — full unfiltered data
+  let recentRows = [];
 
   // ── Startup ──────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => {
+    ensureCanonicalValues();
     refreshStatus();
     refreshQueue();
     refreshActivity();
     refreshRecent();
+    refreshStats();
+    loadBrowserFolder('D:/Scans/Incoming');
     pollInterval = setInterval(() => {
       refreshStatus();
       refreshQueue();
       refreshActivity();
+      refreshStats();
     }, 4000);
   });
+
+
+  // ── Summary stats ────────────────────────────────────────────
+  async function refreshStats() {
+    const prop = (document.getElementById('stats-property-filter')?.value || '').trim();
+    const url  = '/api/summary-stats' + (prop ? '?property=' + encodeURIComponent(prop) : '');
+    const s = await fetch(url).then(r => r.json()).catch(() => null);
+    if (!s) return;
+    const tf = document.getElementById('stat-total-filed');
+    const uc = document.getElementById('stat-unpaid-count');
+    const ua = document.getElementById('stat-unpaid-amount');
+    const oc = document.getElementById('stat-overdue-count');
+    if (tf) tf.textContent = s.total_filed != null ? s.total_filed : '0';
+    if (uc) uc.textContent = s.unpaid_count != null ? s.unpaid_count : '0';
+    if (ua) ua.textContent = '$' + (s.unpaid_amount || 0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2});
+    if (oc) oc.textContent = s.overdue_count != null ? s.overdue_count : '0';
+  }
 
   // ── Status ───────────────────────────────────────────────────
   async function refreshStatus() {
@@ -250,28 +515,163 @@
     document.getElementById('pill-api').className = 'pill ' + (r.api_key_loaded ? 'ok' : 'err');
   }
 
+  // ── File browser ─────────────────────────────────────────────
+  async function loadBrowserFolder(path) {
+    document.getElementById('browser-path-bar').textContent = path;
+    document.getElementById('browser-list').innerHTML =
+      '<div class="empty" style="padding:14px 0;font-size:12px;">Loading…</div>';
+    let data = null;
+    try {
+      const resp = await fetch('/api/browse-folder?path=' + encodeURIComponent(path));
+      if (resp.ok) {
+        data = await resp.json();
+      } else {
+        const txt = await resp.text().catch(() => '');
+        data = { error: `Server error ${resp.status}${txt ? ': ' + txt.slice(0, 120) : ''}` };
+      }
+    } catch (err) {
+      data = { error: 'Network error — is the server running? (' + err.message + ')' };
+    }
+    renderBrowser(data, path);
+  }
+
+  function renderBrowser(data, requestedPath) {
+    const pathBar = document.getElementById('browser-path-bar');
+    const listEl  = document.getElementById('browser-list');
+    pathBar.textContent = (data && !data.error) ? data.path : requestedPath;
+
+    if (!data || data.error) {
+      listEl.innerHTML = '<div class="empty" style="padding:14px 0;font-size:11px;color:#c00;">' +
+        esc(data && data.error ? data.error : 'Cannot access folder') + '</div>';
+      return;
+    }
+
+    const supported = ['.pdf', '.jpg', '.jpeg', '.png'];
+    listEl.innerHTML = '';
+
+    if (!data.items || data.items.length === 0) {
+      listEl.innerHTML = '<div class="empty" style="padding:14px 0;">Empty folder</div>';
+      return;
+    }
+
+    data.items.forEach(item => {
+      const div = document.createElement('div');
+      if (item.type === 'dir') {
+        const isUp = item.name === '..';
+        div.className = 'browser-item ' + (isUp ? 'up-dir' : 'dir');
+        div.innerHTML = '<span class="browser-icon">' + (isUp ? '⬆' : '📁') + '</span>' +
+                        '<span class="browser-name">' + esc(isUp ? 'Up (..)' : item.name) + '</span>';
+        div.addEventListener('click', () => loadBrowserFolder(item.path));
+      } else {
+        if (!supported.includes(item.ext)) return;
+        const isSelected = browserSelectedFiles.has(item.path);
+        div.className = 'browser-item file' + (isSelected ? ' selected' : '');
+
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = isSelected;
+
+        const icon = document.createElement('span');
+        icon.className = 'browser-icon';
+        icon.textContent = '📄';
+
+        const name = document.createElement('span');
+        name.className = 'browser-name';
+        name.title = item.name;
+        name.textContent = item.name;
+
+        div.appendChild(cb);
+        div.appendChild(icon);
+        div.appendChild(name);
+
+        const toggle = () => {
+          if (browserSelectedFiles.has(item.path)) {
+            browserSelectedFiles.delete(item.path);
+            div.classList.remove('selected');
+            cb.checked = false;
+          } else {
+            browserSelectedFiles.add(item.path);
+            div.classList.add('selected');
+            cb.checked = true;
+          }
+          updateBrowserSelCount();
+        };
+        div.addEventListener('click', (e) => { if (e.target === cb) return; toggle(); });
+        cb.addEventListener('click', (e) => { e.stopPropagation(); toggle(); });
+      }
+      listEl.appendChild(div);
+    });
+  }
+
+  function updateBrowserSelCount() {
+    const n = browserSelectedFiles.size;
+    document.getElementById('browser-sel-count').textContent = n + ' selected';
+    document.getElementById('browser-add-btn').disabled = n === 0;
+  }
+
+  async function addBrowserFiles() {
+    if (browserSelectedFiles.size === 0) return;
+    let added = 0, skipped = 0;
+    for (const filePath of [...browserSelectedFiles]) {
+      const r = await fetch('/api/queue/upload-path', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({path: filePath}),
+      }).then(r => r.json()).catch(() => null);
+      if (r && r.ok) added++;
+      else if (r && r.duplicate_source) skipped++;
+    }
+    browserSelectedFiles.clear();
+    updateBrowserSelCount();
+    const pathBar = document.getElementById('browser-path-bar');
+    if (pathBar) loadBrowserFolder(pathBar.textContent);
+    if (skipped > 0) alert(skipped + ' file(s) skipped — already processed.');
+    if (added > 0) refreshQueue();
+  }
+
   // ── Queue ─────────────────────────────────────────────────────
   async function refreshQueue() {
     const items = await fetch('/api/queue').then(r => r.json()).catch(() => []);
     const qList = document.getElementById('queue-list');
     const rList = document.getElementById('review-list');
-    document.getElementById('queue-count').textContent = items.length + ' files';
+    const pending   = items.filter(i => ['pending','processing','error'].includes(i.status));
+    const forReview = items.filter(i => i.status === 'review');
 
-    const pending    = items.filter(i => ['pending','processing','error'].includes(i.status));
-    const forReview  = items.filter(i => i.status === 'review');
-
+    document.getElementById('queue-count').textContent = pending.length + ' files';
     document.getElementById('review-count').textContent = forReview.length + ' awaiting review';
+
+    const stageLabels = ['Reading', 'Matching', 'Analyzing', 'Scoring'];
+    const stageKeys   = ['reading', 'matching', 'analyzing', 'scoring'];
 
     qList.innerHTML = pending.length === 0
       ? '<div class="empty">No files in queue</div>'
-      : pending.map(item => `
-        <div class="queue-item">
-          <span class="name" title="${item.filename}">${item.filename}</span>
-          <span class="badge ${item.status}">${item.status}</span>
-          ${item.status === 'error' ? `<span title="${item.error}" style="color:#991b1b;cursor:help;">⚠</span>` : ''}
-          ${item.status === 'pending' ? `<button class="btn sm" onclick="processOne('${item.filename}')">Run</button>` : ''}
-          <button class="btn sm" onclick="removeFile('${item.filename}')" title="Remove">✕</button>
-        </div>`).join('');
+      : pending.map(item => {
+          const si = fileStages[item.filename] || {stage: null, done: []};
+          let stageBar = '';
+          if (item.status === 'processing') {
+            const activeIdx  = si.stage ? stageKeys.indexOf(si.stage) : -1;
+            const activeLabel = activeIdx >= 0 ? stageLabels[activeIdx] : '';
+            stageBar = '<div class="stage-bar">' +
+              stageKeys.map((k, i) => {
+                const isDone   = si.done && si.done.includes(k);
+                const isActive = si.stage === k;
+                const cls = isDone ? 'done' : isActive ? 'active' : '';
+                return `<div class="stage-seg ${cls}">${stageLabels[i]}</div>`;
+              }).join('') +
+            '</div>' +
+            (activeLabel ? `<div class="stage-current-label">Stage: ${esc(activeLabel)}&hellip;</div>` : '');
+          }
+          return `<div class="queue-item">
+            <div class="queue-item-header">
+              <span class="name" title="${esc(item.filename)}">${esc(item.filename)}</span>
+              <span class="badge ${item.status}">${item.status}</span>
+              ${item.status === 'error' ? `<span title="${esc(item.error||'')}" style="color:#991b1b;cursor:help;">⚠</span>` : ''}
+              ${item.status === 'pending' ? `<button class="btn sm" onclick="processOne('${esc(item.filename)}')">Process This Doc</button>` : ''}
+              <button class="btn sm" onclick="removeFile('${esc(item.filename)}')" title="Remove">✕</button>
+            </div>
+            ${stageBar}
+          </div>`;
+        }).join('');
 
     rList.innerHTML = forReview.length === 0
       ? '<div class="empty">No documents awaiting review</div>'
@@ -281,14 +681,17 @@
           const amount = r.amount_due ? '$' + r.amount_due : '—';
           const date   = r.bill_date || '—';
           const conf   = r._confidence || 'medium';
-          return `<div class="review-item" onclick="openReview('${item.filename}')">
-            <div class="rv-vendor">${vendor} <span class="badge ${conf}" style="margin-left:6px;">${conf}</span></div>
-            <div class="rv-meta">${date} · ${amount} · ${item.filename}</div>
+          const refBadge = r._reference_match
+            ? `<span style="margin-left:4px;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;background:#d1fae5;color:#065f46;">✓ ref</span>`
+            : '';
+          return `<div class="review-item" onclick="openReview('${esc(item.filename)}')">
+            <div class="rv-vendor">${esc(vendor)} <span class="badge ${conf}" style="margin-left:6px;">${conf}</span>${refBadge}</div>
+            <div class="rv-meta">${esc(date)} · ${amount} · ${esc(item.filename)}</div>
           </div>`;
         }).join('');
   }
 
-  // ── File upload ───────────────────────────────────────────────
+  // ── File upload (drag & drop) ─────────────────────────────────
   const dropZone = document.getElementById('drop-zone');
   dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
   dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
@@ -302,31 +705,43 @@
     for (const file of files) {
       const fd = new FormData();
       fd.append('file', file);
-      await fetch('/api/queue/upload', { method: 'POST', body: fd });
+      const r = await fetch('/api/queue/upload', {method:'POST', body:fd})
+        .then(r => r.json()).catch(() => null);
+      if (r && r.duplicate_source) {
+        alert('"' + file.name + '" was already processed — skipping.');
+      }
     }
     refreshQueue();
   }
 
   async function removeFile(filename) {
-    await fetch('/api/queue/remove/' + encodeURIComponent(filename), { method: 'DELETE' });
+    await fetch('/api/queue/remove/' + encodeURIComponent(filename), {method:'DELETE'});
     refreshQueue();
+  }
+
+  // ── SSE stage → process stage mapping ────────────────────────
+  function sseToProcessStage(sseStage) {
+    if (sseStage === 'intake')                                          return 'reading';
+    if (sseStage === 'reference_check')                                 return 'matching';
+    if (['claude_send','claude_analyze','claude_results'].includes(sseStage)) return 'analyzing';
+    if (['confidence','reference','duplicate','review'].includes(sseStage))   return 'scoring';
+    return null;
   }
 
   // ── Processing ────────────────────────────────────────────────
   async function processAll() {
     const btn = document.getElementById('process-btn');
     btn.disabled = true;
-    showProgress(0, 'Starting...');
-    const r = await fetch('/api/process/all', { method: 'POST' }).then(r => r.json()).catch(() => null);
+    showProgress(0, 'Starting…');
+    const r = await fetch('/api/process/all', {method:'POST'}).then(r => r.json()).catch(() => null);
     if (r) {
       const total = r.count || 1;
-      let done = 0;
       const poll = setInterval(async () => {
         const items = await fetch('/api/queue').then(r => r.json()).catch(() => []);
         const processing = items.filter(i => i.status === 'processing').length;
-        done = items.filter(i => ['review','filed','error'].includes(i.status)).length;
-        const pct = Math.round((done / total) * 100);
-        showProgress(pct, processing > 0 ? `Analyzing ${processing} document${processing>1?'s':''}...` : 'Complete');
+        const done = items.filter(i => ['review','filed','error'].includes(i.status)).length;
+        const pct  = Math.round((done / total) * 100);
+        showProgress(pct, processing > 0 ? `Analyzing ${processing} document${processing>1?'s':''}…` : 'Complete');
         if (processing === 0) {
           clearInterval(poll);
           btn.disabled = false;
@@ -334,6 +749,7 @@
           refreshQueue();
           refreshActivity();
           refreshRecent();
+          refreshStats();
         }
       }, 1500);
     } else {
@@ -343,18 +759,32 @@
   }
 
   async function processOne(filename) {
-    showProgress(30, 'Analyzing...');
+    showProgress(5, 'Starting…');
+    fileStages[filename] = {stage: 'reading', done: []};
+    refreshQueue();
     const source = new EventSource('/api/process/' + encodeURIComponent(filename));
     source.onmessage = e => {
       const data = JSON.parse(e.data);
-      const stages = { intake: 20, analyzing: 60, review: 100, error: 100 };
-      showProgress(stages[data.stage] || 50, data.message);
-      if (data.stage === 'review' || data.stage === 'error') {
-        source.close();
-        hideProgress();
+      const ps   = sseToProcessStage(data.stage);
+      if (ps) {
+        const order = ['reading','matching','analyzing','scoring'];
+        const idx   = order.indexOf(ps);
+        fileStages[filename] = {stage: ps, done: order.slice(0, idx)};
         refreshQueue();
-        refreshActivity();
-        if (data.stage === 'review') openReview(filename);
+      }
+      showProgress(data.pct || 50, data.label || 'Processing…');
+      if (data.stage === 'review' || data.stage === 'error') {
+        // Show all stages complete briefly before transitioning
+        fileStages[filename] = {stage: null, done: ['reading','matching','analyzing','scoring']};
+        refreshQueue();
+        source.close();
+        setTimeout(() => {
+          hideProgress();
+          refreshQueue();
+          refreshActivity();
+          refreshStats();
+          if (data.stage === 'review') openReview(filename);
+        }, 800);
       }
     };
     source.onerror = () => { source.close(); hideProgress(); refreshQueue(); };
@@ -365,7 +795,6 @@
     document.getElementById('progress-fill').style.width = pct + '%';
     document.getElementById('progress-label').textContent = label;
   }
-
   function hideProgress() {
     setTimeout(() => {
       document.getElementById('progress-wrap').classList.remove('active');
@@ -374,15 +803,17 @@
   }
 
   // ── Review modal ──────────────────────────────────────────────
-  function openReview(filename) {
-    fetch('/api/queue').then(r => r.json()).then(items => {
-      const item = items.find(i => i.id === filename);
-      if (!item || !item.result) return;
-      currentFilename = filename;
-      currentResult   = item.result;
-      renderModal(item.result);
-      document.getElementById('review-modal').classList.add('open');
-    });
+  async function openReview(filename) {
+    await ensureCanonicalValues();
+    const items = await fetch('/api/queue').then(r => r.json()).catch(() => []);
+    const item = items.find(i => i.id === filename);
+    if (!item || !item.result) return;
+    currentFilename = filename;
+    currentResult   = item.result;
+    renderModal(item.result);
+    document.getElementById('review-modal').classList.add('open');
+    // Attach input listeners for live path preview (after DOM is built)
+    setTimeout(_attachPathListeners, 0);
   }
 
   function closeModal() {
@@ -396,91 +827,482 @@
     return c ? 'conf-' + c : '';
   }
 
+  function esc(s) {
+    return (s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function buildSelect(id, options, currentValue, cssClass='') {
+    const opts = options.map(o => {
+      const sel = (o === currentValue || o.toLowerCase() === (currentValue||'').toLowerCase()) ? 'selected' : '';
+      return `<option value="${esc(o)}" ${sel}>${esc(o)}</option>`;
+    });
+    const inList = options.some(o => o.toLowerCase() === (currentValue||'').toLowerCase());
+    const lead   = (!inList && currentValue) ? `<option value="${esc(currentValue)}" selected>${esc(currentValue)} (current)</option>` : '';
+    return `<select id="${id}" class="${cssClass}" onchange="handleSelectChange('${id}')"><option value="">— select —</option>${lead}${opts.join('')}<option value="__add_new__">+ Add new…</option></select>`;
+  }
+
+  function buildUnitSelect(id, property, currentUnit) {
+    const units = (canonicalValues.units_by_property || {})[property] || [];
+    if (!units.length) {
+      // No units configured — free text, but add a small "add" link
+      return `<input id="${id}" value="${esc(currentUnit||'')}" placeholder="Unit">`;
+    }
+    const opts = units.map(u => {
+      const sel = u.toLowerCase() === (currentUnit||'').toLowerCase() ? 'selected' : '';
+      return `<option value="${esc(u)}" ${sel}>${esc(u)}</option>`;
+    });
+    const inList = units.some(u => u.toLowerCase() === (currentUnit||'').toLowerCase());
+    const lead = (!inList && currentUnit) ? `<option value="${esc(currentUnit)}" selected>${esc(currentUnit)} (current)</option>` : '';
+    return `<select id="${id}" onchange="handleSelectChange('${id}')"><option value="">— select —</option>${lead}${opts.join('')}<option value="__add_new__">+ Add new…</option></select>`;
+  }
+
+  // Map from select id → config list name (for "Add new…" saves)
+  const _selectToList = {
+    'f-vendor_category':  'vendor_categories',
+    'ed-vendor_category': 'vendor_categories',
+    'f-payment_status':   'payment_statuses',
+    'ed-payment_status':  'payment_statuses',
+    'f-document_type':    'document_types',
+    'ed-document_type':   'document_types',
+    'f-property':         'properties',
+    'ed-property':        'properties',
+  };
+
+  async function handleSelectChange(selectId) {
+    const el = document.getElementById(selectId);
+    if (!el) return;
+
+    // ── "Add new…" handler ─────────────────────────────────────
+    if (el.value === '__add_new__') {
+      el.value = '';  // reset optimistically
+
+      const isUnit = selectId.endsWith('-unit');
+      const newVal = window.prompt(isUnit ? 'Enter new unit:' : 'Enter new value:');
+      if (!newVal || !newVal.trim()) return;
+      const trimmed = newVal.trim();
+
+      if (isUnit) {
+        // Add to units_by_property for the currently selected property
+        const prefix  = selectId.startsWith('f-') ? 'f-' : 'ed-';
+        const propEl  = document.getElementById(prefix + 'property');
+        const prop    = propEl ? propEl.value : '';
+        if (!prop) { alert('Please select a property first.'); return; }
+        const res = await fetch('/api/config/add-unit', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({property: prop, unit: trimmed}),
+        }).then(r => r.json()).catch(() => null);
+        if (!res || !res.ok) { alert('Failed to save new unit.'); return; }
+        _cvPromise = null;
+        await ensureCanonicalValues();
+        el.outerHTML = buildUnitSelect(selectId, prop, trimmed);
+      } else {
+        const listName = _selectToList[selectId];
+        if (!listName) return;
+        await fetch('/api/config/add', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({list: listName, value: trimmed}),
+        }).then(r => r.json()).catch(() => null);
+        _cvPromise = null;
+        await ensureCanonicalValues();
+        const options = canonicalValues[listName] || [];
+        el.outerHTML = buildSelect(selectId, options, trimmed);
+
+        // If it was a property change, also refresh the unit select
+        if (selectId === 'f-property' || selectId === 'ed-property') {
+          const prefix  = selectId.startsWith('f-') ? 'f-' : 'ed-';
+          const unitEl  = document.getElementById(prefix + 'unit');
+          if (unitEl) unitEl.outerHTML = buildUnitSelect(prefix + 'unit', trimmed, '');
+        }
+      }
+      return;
+    }
+
+    // ── Property change → rebuild unit select ──────────────────
+    if (selectId === 'f-property' || selectId === 'ed-property') {
+      const prefix = selectId.startsWith('f-') ? 'f-' : 'ed-';
+      const prop   = el.value;
+      const unitEl = document.getElementById(prefix + 'unit');
+      if (unitEl) {
+        unitEl.outerHTML = buildUnitSelect(prefix + 'unit', prop, '');
+      }
+      // Auto-fill service address from account_address_map (review modal only)
+      if (prefix === 'f-') {
+        const acct = getFieldValue('f-account_number');
+        if (acct) {
+          const m = (canonicalValues.account_address_map || []).find(x => x.account_number === acct);
+          if (m && m.service_address) {
+            const addrEl = document.getElementById('f-service_address');
+            if (addrEl) addrEl.value = m.service_address;
+          }
+        }
+      }
+    }
+  }
+
+  function getFieldValue(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  }
+
   function renderModal(r) {
-    const fc = r.field_confidence || {};
-    document.getElementById('modal-fields').innerHTML = `
+    const props  = canonicalValues.properties || [];
+    const vcats  = canonicalValues.vendor_categories || [];
+    const prop   = r.property || '';
+    const vendor = r.vendor_name_normalized || r.vendor_name_raw || '';
+    const acct   = r.account_number || '';
+    const today  = new Date().toISOString().split('T')[0];
+    const due    = r.due_date || '';
+    const status = (r.payment_status || 'unpaid').toLowerCase();
+    const isOverdue = due && due < today && status === 'unpaid';
+
+    const refBanner = r._reference_match ? `
+      <div class="ref-match-banner">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a7a4a" stroke-width="2.5">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 13.01 9 10.01"/>
+        </svg>
+        <strong>Reference table match</strong> — vendor, account &amp; address confirmed.
+        ${r._reference_match_fields ? `<span style="margin-left:auto;color:#1a7a4a;opacity:0.7;font-size:11px;">${r._reference_match_fields.join(', ')}</span>` : ''}
+      </div>` : '';
+
+    const overdueWarn = isOverdue
+      ? `<div class="overdue-warning">⚠️ <strong>Overdue:</strong> Due date ${esc(due)} has passed and payment is unpaid</div>`
+      : '';
+
+    document.getElementById('modal-fields').innerHTML = refBanner + `
+
+      <!-- ── Static fields ── -->
       <div class="field-row">
         <div class="field-group">
           <label>Document type</label>
-          <select id="f-document_type">
-            <option ${r.document_type==='bill'    ?'selected':''}>bill</option>
-            <option ${r.document_type==='invoice' ?'selected':''}>invoice</option>
-            <option ${r.document_type==='receipt' ?'selected':''}>receipt</option>
-          </select>
+          ${buildSelect('f-document_type', canonicalValues.document_types || ['bill','invoice','receipt'], r.document_type)}
         </div>
         <div class="field-group">
-          <label>Vendor</label>
-          <input id="f-vendor_name_normalized" class="${confClass(r,'vendor')}" value="${r.vendor_name_normalized || r.vendor_name_raw || ''}">
+          <label>Vendor category</label>
+          ${buildSelect('f-vendor_category', vcats, r.vendor_category || '')}
         </div>
+      </div>
+      <div class="field-group">
+        <label>Vendor</label>
+        <input id="f-vendor_name_normalized" class="${confClass(r,'vendor')}" value="${esc(vendor)}">
+      </div>
+      <div class="field-group">
+        <label>Account number</label>
+        <input id="f-account_number" class="${confClass(r,'account_number')}" value="${esc(acct)}">
       </div>
       <div class="field-row">
         <div class="field-group">
           <label>Property</label>
-          <input id="f-property" class="${confClass(r,'property')}" value="${r.property || ''}">
+          ${buildSelect('f-property', props, prop, confClass(r,'property'))}
         </div>
         <div class="field-group">
           <label>Unit</label>
-          <input id="f-unit" value="${r.unit || ''}">
+          ${buildUnitSelect('f-unit', prop, r.unit || '')}
         </div>
       </div>
-      <div class="field-row">
-        <div class="field-group">
-          <label>Account number</label>
-          <input id="f-account_number" class="${confClass(r,'account_number')}" value="${r.account_number || ''}">
-        </div>
-        <div class="field-group">
-          <label>Service address</label>
-          <input id="f-service_address" value="${r.service_address || ''}">
-        </div>
-      </div>
+      <!-- Service address — hidden from UI, preserved in data -->
+      <input type="hidden" id="f-service_address" value="${esc(r.service_address || '')}">
+
+      <div class="modal-divider"></div>
+
+      <!-- ── Dynamic fields ── -->
       <div class="field-row">
         <div class="field-group">
           <label>Bill date</label>
-          <input id="f-bill_date" class="${confClass(r,'date')}" value="${r.bill_date || ''}">
+          <input id="f-bill_date" class="${confClass(r,'date')}" value="${esc(r.bill_date || '')}">
         </div>
         <div class="field-group">
           <label>Due date</label>
-          <input id="f-due_date" class="${confClass(r,'due_date')}" value="${r.due_date || ''}">
+          <input id="f-due_date" class="${confClass(r,'due_date')}" value="${esc(due)}">
+        </div>
+      </div>
+      ${overdueWarn}
+      <div class="field-row">
+        <div class="field-group">
+          <label>Amount due</label>
+          <input id="f-amount_due" class="${confClass(r,'amount_due')}" value="${esc(r.amount_due || '')}">
+        </div>
+        <div class="field-group">
+          <label>Current charges</label>
+          <input id="f-current_charges" class="${confClass(r,'amount_due')}" value="${esc(r.current_charges || '')}">
         </div>
       </div>
       <div class="field-row">
         <div class="field-group">
-          <label>Amount due</label>
-          <input id="f-amount_due" class="${confClass(r,'amount_due')}" value="${r.amount_due || ''}">
+          <label>Previous balance</label>
+          <input id="f-previous_balance" value="${esc(r.previous_balance || '')}">
         </div>
         <div class="field-group">
-          <label>Previous balance</label>
-          <input id="f-previous_balance" value="${r.previous_balance || ''}">
+          <label>Payments received</label>
+          <input id="f-payments_received" value="${esc(r.payments_received || '')}">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Late fees</label>
+          <input id="f-late_fees" value="${esc(r.late_fees || '')}">
+        </div>
+        <div class="field-group">
+          <label>Payment status</label>
+          ${buildSelect('f-payment_status', canonicalValues.payment_statuses || ['unpaid','paid','overdue','partial'], r.payment_status || 'unpaid')}
         </div>
       </div>
       <div class="field-group">
         <label>Description of charges</label>
-        <input id="f-description_of_charges" value="${r.description_of_charges || ''}">
+        <input id="f-description_of_charges" value="${esc(r.description_of_charges || '')}">
       </div>
-      ${r.extraction_notes ? `<div style="margin-top:12px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#92400e;">
-        <strong>Claude notes:</strong> ${r.extraction_notes}</div>` : ''}
+      ${r.extraction_notes ? `<div style="margin-top:10px;padding:8px 10px;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;font-size:12px;color:#92400e;"><strong>Claude notes:</strong> ${esc(r.extraction_notes)}</div>` : ''}
+
+      <div class="modal-divider"></div>
+
+      <!-- ── Account history ── -->
+      <div class="acct-history-panel">
+        <div class="acct-history-title">Account History</div>
+        <div id="acct-history-body"><div style="font-size:12px;color:#bbb;">Loading…</div></div>
+        <div id="acct-dup-warning"></div>
+      </div>
+
+      <div class="modal-divider"></div>
+
+      <!-- ── Filing path preview ── -->
+      <div style="margin-top:4px;">
+        <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">
+          Filing path
+          <span style="font-weight:400;color:#bbb;text-transform:none;letter-spacing:0;margin-left:6px;">(updates as you edit fields above)</span>
+        </div>
+        <div id="f-path-wrap" style="position:relative;">
+          <div id="f-filing-path" style="font-size:11px;font-family:monospace;padding:7px 36px 7px 8px;background:#f5f5f0;border:1px solid #e5e5e0;border-radius:6px;word-break:break-all;color:#444;min-height:32px;">Computing…</div>
+          <button title="Override path" onclick="togglePathOverride()" style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#888;font-size:13px;padding:2px 4px;">✎</button>
+        </div>
+        <input id="f-filing-path-override" type="text" placeholder="Paste custom path here…"
+               style="display:none;width:100%;margin-top:4px;font-size:11px;font-family:monospace;"
+               oninput="document.getElementById('f-path-exists-warn').style.display='none'">
+        <div id="f-path-exists-warn" style="display:none;margin-top:4px;padding:6px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:5px;font-size:11px;color:#991b1b;">
+          ⚠ A file already exists at this path — filing may overwrite it.
+        </div>
+      </div>
     `;
+
+    loadAccountHistory(acct, vendor);
+    checkAccountDuplicate(vendor, acct, r.bill_date || '');
+    updateFilingPathPreview();
+  }
+
+  // ── Filing path preview ──────────────────────────────────────
+  let _pathDebounce = null;
+
+  function schedulePathUpdate() {
+    clearTimeout(_pathDebounce);
+    _pathDebounce = setTimeout(updateFilingPathPreview, 400);
+  }
+
+  async function updateFilingPathPreview() {
+    const el = document.getElementById('f-filing-path');
+    const warnEl = document.getElementById('f-path-exists-warn');
+    if (!el || !currentFilename) return;
+
+    const payload = {
+      property:              getFieldValue('f-property'),
+      vendor_category:       getFieldValue('f-vendor_category'),
+      document_type:         getFieldValue('f-document_type'),
+      bill_date:             getFieldValue('f-bill_date'),
+      vendor_name_normalized: getFieldValue('f-vendor_name_normalized'),
+      unit:                  getFieldValue('f-unit'),
+      amount_due:            getFieldValue('f-amount_due'),
+      source_file:           currentFilename,
+    };
+
+    el.textContent = 'Computing…';
+    el.style.color = '#bbb';
+
+    const resp = await fetch('/api/preview-filing-path', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    }).then(r => r.json()).catch(() => null);
+
+    if (!resp) { el.textContent = '(could not compute path)'; return; }
+
+    el.textContent = resp.full_path || '(unknown)';
+    el.style.color = '#444';
+
+    if (warnEl) {
+      warnEl.style.display = resp.exists ? '' : 'none';
+    }
+  }
+
+  function togglePathOverride() {
+    const inp = document.getElementById('f-filing-path-override');
+    const el  = document.getElementById('f-filing-path');
+    if (!inp) return;
+    if (inp.style.display === 'none') {
+      inp.style.display = '';
+      inp.value = el.textContent;
+      inp.focus();
+    } else {
+      inp.style.display = 'none';
+    }
+  }
+
+  // ── Edit modal path preview ──────────────────────────────────
+
+  async function updateEditFilingPathPreview() {
+    const el = document.getElementById('ed-new-path');
+    const warnEl = document.getElementById('ed-path-exists-warn');
+    if (!el || !_editRecord) return;
+    const payload = {
+      property:      getEditFieldValue('ed-property'),
+      vendor_category: getEditFieldValue('ed-vendor_category'),
+      document_type: getEditFieldValue('ed-document_type'),
+      vendor_name:   getEditFieldValue('ed-vendor_name'),
+      document_date: getEditFieldValue('ed-document_date'),
+      amount_due:    getEditFieldValue('ed-amount_due'),
+      unit:          getEditFieldValue('ed-unit'),
+      source_file:   _editRecord.source_file || 'document.pdf',
+    };
+    el.textContent = 'Computing…';
+    el.style.color = '#bbb';
+    const resp = await fetch('/api/compute-filing-path', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    }).then(r => r.json()).catch(() => null);
+    if (!resp) { el.textContent = '(could not compute)'; return; }
+    el.textContent = resp.full_path || '(unknown)';
+    const isChanged = resp.full_path && resp.full_path !== (_editRecord.final_storage_path || '');
+    el.style.color = isChanged ? '#1a7a4a' : '#888';
+    if (warnEl) warnEl.style.display = (resp.exists && isChanged) ? '' : 'none';
+  }
+
+  function scheduleEditPathUpdate() {
+    clearTimeout(_pathDebounce);
+    _pathDebounce = setTimeout(updateEditFilingPathPreview, 400);
+  }
+
+  function toggleEditPathOverride() {
+    const inp = document.getElementById('ed-path-override');
+    const el  = document.getElementById('ed-new-path');
+    if (!inp) return;
+    if (inp.style.display === 'none') {
+      inp.style.display = '';
+      inp.value = el.textContent !== 'Computing…' ? el.textContent : '';
+      inp.focus();
+    } else {
+      inp.style.display = 'none';
+    }
+  }
+
+  function _attachEditPathListeners() {
+    const watchIds = [
+      'ed-property','ed-vendor_category','ed-document_type',
+      'ed-vendor_name','ed-document_date','ed-amount_due','ed-unit',
+    ];
+    watchIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.addEventListener('input', scheduleEditPathUpdate);
+        if (el.tagName === 'SELECT') el.addEventListener('change', scheduleEditPathUpdate);
+      }
+    });
+  }
+
+  // Wire up path preview updates to the review modal fields
+  function _attachPathListeners() {
+    const watchIds = [
+      'f-property','f-vendor_category','f-document_type',
+      'f-vendor_name_normalized','f-bill_date','f-amount_due','f-unit',
+    ];
+    watchIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.addEventListener('input', schedulePathUpdate);
+      // selects fire 'change', not 'input'
+      if (el && el.tagName === 'SELECT') el.addEventListener('change', schedulePathUpdate);
+    });
+  }
+
+  async function loadAccountHistory(accountNumber, vendor) {
+    const el = document.getElementById('acct-history-body');
+    if (!el) return;
+    if (!accountNumber) {
+      el.innerHTML = '<div style="font-size:12px;color:#bbb;">No account number</div>';
+      return;
+    }
+    const params = new URLSearchParams({account_number: accountNumber});
+    if (vendor) params.set('vendor', vendor);
+    const rows = await fetch('/api/account-history?' + params).then(r => r.json()).catch(() => []);
+    if (!rows.length) {
+      el.innerHTML = '<div style="font-size:12px;color:#bbb;">No previous records for this account</div>';
+      return;
+    }
+    const last = rows[0];
+    el.innerHTML = `
+      <div class="history-row">
+        <span class="history-lbl">Last bill date</span>
+        <span class="history-val">${esc(last.document_date || '—')}</span>
+      </div>
+      <div class="history-row">
+        <span class="history-lbl">Last amount due</span>
+        <span class="history-val">${last.amount_due ? '$' + esc(last.amount_due) : '—'}</span>
+      </div>
+      <div class="history-row">
+        <span class="history-lbl">Last status</span>
+        <span class="history-val">
+          <span class="badge ${esc(last.payment_status || 'unpaid')}" style="font-size:10px;">${esc(last.payment_status || 'unpaid')}</span>
+        </span>
+      </div>`;
+  }
+
+  async function checkAccountDuplicate(vendor, accountNumber, billDate) {
+    const el = document.getElementById('acct-dup-warning');
+    if (!el || !vendor || !accountNumber || !billDate) return;
+    const params = new URLSearchParams({account_number: accountNumber, vendor});
+    const rows = await fetch('/api/account-history?' + params).then(r => r.json()).catch(() => []);
+    const dup  = rows.find(r => r.document_date === billDate);
+    el.innerHTML = dup
+      ? `<div class="dup-warning">⚠️ <strong>Duplicate warning:</strong> A bill for this vendor/account/date was already filed on ${esc(dup.document_date)} for ${dup.amount_due ? '$' + esc(dup.amount_due) : '?'}</div>`
+      : '';
   }
 
   async function confirmDocument() {
     if (!currentFilename) return;
+
+    // Check for missing unit on handyman documents
+    const vendorCat = getFieldValue('f-vendor_category');
+    const unit      = getFieldValue('f-unit');
+    if (vendorCat === 'handyman services' && !unit.trim()) {
+      if (!confirm('Unit is not set for this handyman invoice.\nFiling without a unit — continue?')) return;
+    }
+
     const payload = {
-      document_type:          document.getElementById('f-document_type').value,
-      vendor_name_normalized: document.getElementById('f-vendor_name_normalized').value,
-      property:               document.getElementById('f-property').value,
-      unit:                   document.getElementById('f-unit').value,
-      account_number:         document.getElementById('f-account_number').value,
-      service_address:        document.getElementById('f-service_address').value,
-      bill_date:              document.getElementById('f-bill_date').value,
-      due_date:               document.getElementById('f-due_date').value,
-      amount_due:             document.getElementById('f-amount_due').value,
-      previous_balance:       document.getElementById('f-previous_balance').value,
-      description_of_charges: document.getElementById('f-description_of_charges').value,
-      _confidence:            currentResult ? currentResult._confidence : '',
+      document_type:           getFieldValue('f-document_type'),
+      vendor_name_normalized:  getFieldValue('f-vendor_name_normalized'),
+      vendor_category:         getFieldValue('f-vendor_category'),
+      property:                getFieldValue('f-property'),
+      unit:                    getFieldValue('f-unit'),
+      account_number:          getFieldValue('f-account_number'),
+      service_address:         getFieldValue('f-service_address'),
+      bill_date:               getFieldValue('f-bill_date'),
+      due_date:                getFieldValue('f-due_date'),
+      amount_due:              getFieldValue('f-amount_due'),
+      current_charges:         getFieldValue('f-current_charges'),
+      previous_balance:        getFieldValue('f-previous_balance'),
+      payments_received:       getFieldValue('f-payments_received'),
+      late_fees:               getFieldValue('f-late_fees'),
+      payment_status:          getFieldValue('f-payment_status'),
+      description_of_charges:  getFieldValue('f-description_of_charges'),
+      _confidence:             currentResult ? currentResult._confidence : '',
+      _reference_match:        currentResult ? !!currentResult._reference_match : false,
     };
+
+    // If user manually overrode the filing path, send it
+    const overrideInp = document.getElementById('f-filing-path-override');
+    if (overrideInp && overrideInp.style.display !== 'none' && overrideInp.value.trim()) {
+      payload._path_override = overrideInp.value.trim();
+    }
     const r = await fetch('/api/confirm/' + encodeURIComponent(currentFilename), {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {'Content-Type': 'application/json'},
       body: JSON.stringify(payload),
     }).then(r => r.json()).catch(() => null);
 
@@ -489,13 +1311,14 @@
       refreshQueue();
       refreshActivity();
       refreshRecent();
+      refreshStats();
     } else if (r && r.duplicate) {
       alert(
-        `⚠️ Duplicate detected — this document was already filed.\n\n` +
-        `Matched on: ${r.reason}\n\n` +
-        `Originally filed: ${r.original.filed_on}\n` +
-        `Location: ${r.original.filed_path}\n\n` +
-        `The document has been moved to D:\\Scans\\Duplicates\\ for your review.`
+        '⚠️ Duplicate detected — this document was already filed.\n\n' +
+        'Matched on: ' + r.reason + '\n\n' +
+        'Originally filed: ' + r.original.filed_on + '\n' +
+        'Location: ' + r.original.filed_path + '\n\n' +
+        'The document has been moved to D:\\Scans\\Duplicates\\ for your review.'
       );
       closeModal();
       refreshQueue();
@@ -508,7 +1331,7 @@
   async function rejectDocument() {
     if (!currentFilename) return;
     if (!confirm('Move this document to the Error folder?')) return;
-    await fetch('/api/reject/' + encodeURIComponent(currentFilename), { method: 'POST' });
+    await fetch('/api/reject/' + encodeURIComponent(currentFilename), {method:'POST'});
     closeModal();
     refreshQueue();
     refreshActivity();
@@ -516,59 +1339,406 @@
 
   // ── Activity feed ─────────────────────────────────────────────
   async function refreshActivity() {
-  const items = await fetch('/api/activity').then(r => r.json()).catch(() => []);
-  document.getElementById('activity-list').innerHTML = items.length === 0
-    ? '<div class="empty">No activity yet</div>'
-    : items.map(i => `<div class="activity-item ${i.level}">
-        <span class="activity-time">${i.time}</span>
-        <span class="activity-msg">${i.message}</span>
-      </div>`).join('');
-}
-
-async function refreshRecent() {
-  const rows = await fetch('/api/master-log').then(r => r.json()).catch(() => []);
-  const el   = document.getElementById('recent-list');
-  const cnt  = document.getElementById('recent-count');
-
-  if (!rows.length) {
-    el.innerHTML = '<div class="empty" style="padding:20px 0;">No documents filed yet</div>';
-    if (cnt) cnt.textContent = '';
-    return;
+    const items = await fetch('/api/activity').then(r => r.json()).catch(() => []);
+    document.getElementById('activity-list').innerHTML = items.length === 0
+      ? '<div class="empty">No activity yet</div>'
+      : items.map(i => `<div class="activity-item ${i.level}">
+          <span class="activity-time">${i.time}</span>
+          <span class="activity-msg">${i.message}</span>
+        </div>`).join('');
   }
 
-  if (cnt) cnt.textContent = `${rows.length} record${rows.length===1?'':'s'} · click any row to view`;
+  // ── Recent documents ──────────────────────────────────────────
+  async function refreshRecent() {
+    const rows = await fetch('/api/master-log').then(r => r.json()).catch(() => []);
+    recentRows = rows;
+    _refreshVendorFilter(rows);
+    const cnt = document.getElementById('recent-count');
+    if (cnt) cnt.textContent = `${rows.length} record${rows.length===1?'':'s'} · click any row to edit`;
+    renderRecentRows(rows);
+  }
 
-  // Each row is ~42px tall — 5 rows = 210px plus 2px header = fits perfectly in 212px viewport
-  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
-    <thead>
-      <tr style="color:#888;text-align:left;border-bottom:1px solid #e5e5e0;
-                 position:sticky;top:0;background:#fff;z-index:1;">
-        <th style="padding:6px 8px;font-weight:600;">Date</th>
-        <th style="padding:6px 8px;font-weight:600;">Vendor</th>
-        <th style="padding:6px 8px;font-weight:600;">Property</th>
-        <th style="padding:6px 8px;font-weight:600;">Unit</th>
-        <th style="padding:6px 8px;font-weight:600;text-align:right;">Amount</th>
-        <th style="padding:6px 8px;font-weight:600;">Status</th>
-      </tr>
-    </thead>
-    <tbody>
-    ${rows.map((r, i) => `
-      <tr class="doc-row" onclick="openDocumentDetail(${i})" title="Click to view · edit · delete">
-        <td style="padding:6px 8px;color:#888;white-space:nowrap;">${r.document_date||'—'}</td>
-        <td style="padding:6px 8px;font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
-            title="${r.vendor_name||''}">${r.vendor_name||'—'}</td>
-        <td style="padding:6px 8px;color:#888;white-space:nowrap;">${r.property||'—'}</td>
-        <td style="padding:6px 8px;color:#888;text-align:center;">${r.unit||'—'}</td>
-        <td style="padding:6px 8px;text-align:right;white-space:nowrap;">${r.amount_due?'$'+r.amount_due:'—'}</td>
-        <td style="padding:6px 8px;">
-          <span class="badge ${r.payment_status||'unpaid'}" style="font-size:10px;">
-            ${r.payment_status||'unpaid'}
-          </span>
-        </td>
-      </tr>`).join('')}
-    </tbody>
-  </table>`;
-}
+  function _refreshVendorFilter(rows) {
+    const sel = document.getElementById('filter-search');
+    if (!sel) return;
+    const current = sel.value;
+    const vendors = [...new Set(
+      rows.map(r => (r.vendor_name || '').trim()).filter(Boolean)
+    )].sort((a, b) => a.localeCompare(b));
+    sel.innerHTML = '<option value="">All vendors</option>' +
+      vendors.map(v => `<option value="${v.replace(/"/g,'&quot;')}"${v === current ? ' selected' : ''}>${v}</option>`).join('');
+  }
+
+  function applyFilters() {
+    const search    = (document.getElementById('filter-search')?.value || '').trim();
+    const prop      = document.getElementById('filter-property')?.value || '';
+    const dateFrom  = document.getElementById('filter-date-from')?.value || '';
+    const dateTo    = document.getElementById('filter-date-to')?.value || '';
+    const amtMin    = parseFloat(document.getElementById('filter-amt-min')?.value) || 0;
+    const amtMax    = parseFloat(document.getElementById('filter-amt-max')?.value) || Infinity;
+    const status    = document.getElementById('filter-status')?.value || '';
+
+    const filtered = recentRows.filter(r => {
+      if (search && (r.vendor_name||'').trim() !== search) return false;
+      if (prop   && r.property !== prop) return false;
+      if (dateFrom && r.document_date < dateFrom) return false;
+      if (dateTo   && r.document_date > dateTo)   return false;
+      const amt = parseFloat((r.amount_due||'').replace(/[^0-9.]/g,'')) || 0;
+      if (amtMin > 0   && amt < amtMin) return false;
+      if (amtMax < Infinity && amt > amtMax) return false;
+      if (status && (r.payment_status||'unpaid') !== status) return false;
+      return true;
+    });
+
+    const cnt = document.getElementById('recent-count');
+    const suffix = filtered.length < recentRows.length ? ` (${filtered.length} shown)` : '';
+    if (cnt) cnt.textContent = `${recentRows.length} record${recentRows.length===1?'':'s'}${suffix} · click any row to edit`;
+
+    renderRecentRows(filtered);
+  }
+
+  function clearFilters() {
+    document.getElementById('filter-search').value    = '';
+    document.getElementById('filter-property').value  = '';
+    document.getElementById('filter-date-from').value = '';
+    document.getElementById('filter-date-to').value   = '';
+    document.getElementById('filter-amt-min').value   = '';
+    document.getElementById('filter-amt-max').value   = '';
+    document.getElementById('filter-status').value    = '';
+    applyFilters();
+  }
+
+  function renderRecentRows(rows) {
+    const el = document.getElementById('recent-list');
+    if (!rows.length) {
+      el.innerHTML = '<div class="empty" style="padding:20px 0;">No documents match the current filters</div>';
+      return;
+    }
+    el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="color:#888;text-align:left;border-bottom:1px solid #e5e5e0;position:sticky;top:0;background:#fff;z-index:1;">
+          <th style="padding:6px 8px;font-weight:600;">Date</th>
+          <th style="padding:6px 8px;font-weight:600;">Vendor</th>
+          <th style="padding:6px 8px;font-weight:600;">Property</th>
+          <th style="padding:6px 8px;font-weight:600;">Unit</th>
+          <th style="padding:6px 8px;font-weight:600;text-align:right;">Amount</th>
+          <th style="padding:6px 8px;font-weight:600;">Status</th>
+        </tr>
+      </thead>
+      <tbody>
+      ${rows.map((r) => {
+        const rowIdx  = r.row_index !== undefined ? r.row_index : recentRows.indexOf(r);
+        const cls     = r.is_overdue ? 'doc-row overdue-row' : 'doc-row';
+        const statusBadge = `<span class="badge ${r.payment_status||'unpaid'}" style="font-size:10px;">${r.payment_status||'unpaid'}</span>`;
+        const badge       = r.is_overdue
+          ? statusBadge + ` <span class="badge overdue" style="font-size:10px;">Overdue</span>`
+          : statusBadge;
+        return `<tr class="${cls}" onclick="openDocumentEdit(${rowIdx})" title="Click to edit" style="cursor:pointer;">
+          <td style="padding:6px 8px;color:#888;white-space:nowrap;">${r.document_date||'—'}</td>
+          <td style="padding:6px 8px;font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.vendor_name||'')}">${r.vendor_name||'—'}</td>
+          <td style="padding:6px 8px;color:#888;white-space:nowrap;">${r.property||'—'}</td>
+          <td style="padding:6px 8px;color:#888;text-align:center;">${r.unit||'—'}</td>
+          <td style="padding:6px 8px;text-align:right;white-space:nowrap;">${r.amount_due?'$'+r.amount_due:'—'}</td>
+          <td style="padding:6px 8px;">${badge}</td>
+        </tr>`;
+      }).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  // ── Edit modal for filed records ──────────────────────────────
+  let _editRecord = null;  // stores original record for change detection
+
+  async function openDocumentEdit(displayIndex) {
+    await ensureCanonicalValues();
+    const r = await fetch('/api/master-log/' + displayIndex).then(x => x.json()).catch(() => null);
+    if (!r || r.error) { alert('Could not load record'); return; }
+    _editRecord = r;
+
+    const props  = canonicalValues.properties || [];
+    const vcats  = canonicalValues.vendor_categories || [];
+    const prop   = r.property || '';
+    const pStats = canonicalValues.payment_statuses || ['unpaid','paid','overdue','partial'];
+    const dtypes = canonicalValues.document_types || ['bill','invoice','receipt'];
+
+    const auditHtml = (r.manually_edited === 'yes' && r.last_edited_timestamp)
+      ? `<div class="audit-info">Last manually edited: <strong>${esc(r.last_edited_timestamp)}</strong></div>`
+      : '';
+
+    const overlay = document.createElement('div');
+    overlay.id = 'edit-modal-overlay';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;';
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'background:#fff;border-radius:12px;width:640px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);margin:auto;';
+
+    modal.innerHTML = `
+      <div class="modal-header" style="position:sticky;top:0;background:#fff;z-index:5;border-radius:12px 12px 0 0;">
+        <div>
+          <h2 style="font-size:15px;font-weight:600;">${esc(r.vendor_name||'Document')}</h2>
+          <div style="font-size:12px;color:#888;margin-top:2px;">${esc(r.document_date||'')} · ${r.amount_due?'$'+r.amount_due:''} · ${esc(r.property||'')}</div>
+        </div>
+        <button class="close-btn" onclick="document.getElementById('edit-modal-overlay').remove()">×</button>
+      </div>
+      <div class="modal-body">
+        ${auditHtml}
+        <div class="field-row">
+          <div class="field-group">
+            <label>Document type</label>
+            ${buildSelect('ed-document_type', dtypes, r.document_type || '')}
+          </div>
+          <div class="field-group">
+            <label>Vendor category</label>
+            ${buildSelect('ed-vendor_category', vcats, r.vendor_category || '')}
+          </div>
+        </div>
+        <div class="field-group">
+          <label>Vendor name</label>
+          <input id="ed-vendor_name" value="${esc(r.vendor_name||'')}">
+        </div>
+        <div class="field-group">
+          <label>Account number</label>
+          <input id="ed-account_number" value="${esc(r.account_number||'')}">
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Property</label>
+            ${buildSelect('ed-property', props, prop)}
+          </div>
+          <div class="field-group">
+            <label>Unit</label>
+            ${buildUnitSelect('ed-unit', prop, r.unit || '')}
+          </div>
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label>Document date</label>
+            <input id="ed-document_date" value="${esc(r.document_date||'')}">
+          </div>
+          <div class="field-group">
+            <label>Due date</label>
+            <input id="ed-due_date" value="${esc(r.due_date||'')}">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Amount due</label>
+            <input id="ed-amount_due" value="${esc(r.amount_due||'')}">
+          </div>
+          <div class="field-group">
+            <label>Current charges</label>
+            <input id="ed-current_charges" value="${esc(r.current_charges||'')}">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Previous balance</label>
+            <input id="ed-previous_balance" value="${esc(r.previous_balance||'')}">
+          </div>
+          <div class="field-group">
+            <label>Payments received</label>
+            <input id="ed-payments_received" value="${esc(r.payments_received||'')}">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Late fees</label>
+            <input id="ed-late_fees" value="${esc(r.late_fees||'')}">
+          </div>
+          <div class="field-group">
+            <label>Payment status</label>
+            ${buildSelect('ed-payment_status', pStats, r.payment_status || 'unpaid')}
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Accounting review</label>
+            ${buildSelect('ed-review_required_accounting', ['no','yes'], r.review_required_accounting || 'no')}
+          </div>
+          <div class="field-group">
+            <label>Accounting notes</label>
+            <input id="ed-accounting_notes" value="${esc(r.accounting_notes||'')}">
+          </div>
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <!-- ── Filing path section ── -->
+        <div style="margin-bottom:6px;">
+          <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;">
+            Filing Path
+            <span style="font-weight:400;color:#bbb;text-transform:none;letter-spacing:0;margin-left:6px;">(updates as you edit fields above)</span>
+          </div>
+          <div style="font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">Current</div>
+          <div style="font-size:11px;font-family:monospace;padding:6px 8px;background:#f5f5f0;border:1px solid #e5e5e0;border-radius:5px;word-break:break-all;color:#888;margin-bottom:8px;">${esc(r.final_storage_path||'—')}</div>
+          <div style="font-size:10px;font-weight:600;color:#999;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px;">New path if saved</div>
+          <div id="ed-path-wrap" style="position:relative;">
+            <div id="ed-new-path" style="font-size:11px;font-family:monospace;padding:6px 36px 6px 8px;background:#f5f5f0;border:1px solid #e5e5e0;border-radius:5px;word-break:break-all;color:#444;min-height:30px;">Computing…</div>
+            <button title="Override path" onclick="toggleEditPathOverride()" style="position:absolute;right:5px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#888;font-size:13px;padding:2px 4px;">✎</button>
+          </div>
+          <input id="ed-path-override" type="text" placeholder="Paste custom path here…"
+                 style="display:none;width:100%;margin-top:4px;font-size:11px;font-family:monospace;padding:5px 8px;border:1px solid #d0d0c8;border-radius:5px;">
+          <div id="ed-path-exists-warn" style="display:none;margin-top:4px;padding:6px 8px;background:#fef2f2;border:1px solid #fca5a5;border-radius:5px;font-size:11px;color:#991b1b;">
+            ⚠ A file already exists at this path — saving may overwrite it.
+          </div>
+        </div>
+
+        <div class="modal-divider"></div>
+
+        <div style="font-size:11px;color:#aaa;line-height:1.6;">
+          <strong>Source:</strong> ${esc(r.source_file||'—')}<br>
+          <strong>Confidence:</strong> ${esc(r.confidence_score||'—')}<br>
+          <strong>Timestamp:</strong> ${esc(r.timestamp||'—')}
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:space-between;">
+        <button class="btn danger" onclick="confirmDeleteRecord(${displayIndex})">Delete Record + File</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn" onclick="document.getElementById('edit-modal-overlay').remove()">Cancel</button>
+          <button class="btn green" onclick="saveDocumentEdit(${displayIndex})">Save Changes</button>
+        </div>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    setTimeout(() => { _attachEditPathListeners(); updateEditFilingPathPreview(); }, 0);
+  }
+
+  function getEditFieldValue(id) {
+    const el = document.getElementById(id);
+    return el ? el.value : '';
+  }
+
+  async function saveDocumentEdit(displayIndex) {
+    const payload = {
+      document_type:                getEditFieldValue('ed-document_type'),
+      vendor_name:                  getEditFieldValue('ed-vendor_name'),
+      vendor_category:              getEditFieldValue('ed-vendor_category'),
+      account_number:               getEditFieldValue('ed-account_number'),
+      property:                     getEditFieldValue('ed-property'),
+      unit:                         getEditFieldValue('ed-unit'),
+      document_date:                getEditFieldValue('ed-document_date'),
+      due_date:                     getEditFieldValue('ed-due_date'),
+      amount_due:                   getEditFieldValue('ed-amount_due'),
+      current_charges:              getEditFieldValue('ed-current_charges'),
+      previous_balance:             getEditFieldValue('ed-previous_balance'),
+      payments_received:            getEditFieldValue('ed-payments_received'),
+      late_fees:                    getEditFieldValue('ed-late_fees'),
+      payment_status:               getEditFieldValue('ed-payment_status'),
+      review_required_accounting:   getEditFieldValue('ed-review_required_accounting'),
+      accounting_notes:             getEditFieldValue('ed-accounting_notes'),
+    };
+
+    // Check for manual path override
+    const overrideInp   = document.getElementById('ed-path-override');
+    const hasOverride   = overrideInp && overrideInp.style.display !== 'none' && overrideInp.value.trim();
+    const orig          = _editRecord || {};
+    const hasFiledPath  = !!(orig.final_storage_path);
+
+    if (hasOverride && hasFiledPath) {
+      const newPath   = overrideInp.value.trim();
+      const confirmed = await showFileMoveConfirmation(orig.final_storage_path, newPath);
+      if (confirmed) {
+        payload.move_file       = true;
+        payload.new_filing_path = newPath;
+      } else {
+        return; // user cancelled
+      }
+    } else {
+      // Check if path-affecting fields changed, compute new path automatically
+      const pathFields  = ['property', 'vendor_category', 'vendor_name', 'document_date', 'amount_due', 'document_type'];
+      const pathChanged = pathFields.some(f => (payload[f]||'') !== (orig[f]||''));
+
+      if (pathChanged && hasFiledPath) {
+        const pathResp = await fetch('/api/compute-filing-path', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({...payload, source_file: orig.source_file || 'document.pdf'}),
+        }).then(r => r.json()).catch(() => null);
+
+        if (pathResp && pathResp.full_path) {
+          const confirmed = await showFileMoveConfirmation(orig.final_storage_path, pathResp.full_path);
+          if (confirmed) {
+            payload.move_file       = true;
+            payload.new_filing_path = pathResp.full_path;
+          } else {
+            return; // user cancelled
+          }
+        }
+      }
+    }
+
+    const res = await fetch('/api/master-log/' + displayIndex, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload),
+    }).then(r => r.json()).catch(() => null);
+
+    if (res && res.ok) {
+      const overlay = document.getElementById('edit-modal-overlay');
+      if (overlay) overlay.remove();
+      if (res.file_error) alert('Record saved but file move failed:\n' + res.file_error);
+      refreshRecent();
+      refreshActivity();
+      refreshStats();
+    } else {
+      alert('Save failed: ' + (res ? res.error || JSON.stringify(res) : 'network error'));
+    }
+  }
+
+  async function confirmDeleteRecord(displayIndex) {
+    if (!confirm('Delete this record AND its filed PDF permanently?')) return;
+    const res = await fetch('/api/master-log/' + displayIndex, {
+      method: 'DELETE',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({delete_file: true}),
+    }).then(x => x.json()).catch(() => null);
+    if (res && res.ok) {
+      const overlay = document.getElementById('edit-modal-overlay');
+      if (overlay) overlay.remove();
+      refreshRecent();
+      refreshActivity();
+      refreshStats();
+    } else {
+      alert('Delete failed');
+    }
+  }
+
+  // ── File Move Confirmation dialog ─────────────────────────────
+  function showFileMoveConfirmation(fromPath, toPath) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+      const box = document.createElement('div');
+      box.style.cssText = 'background:#fff;border-radius:12px;width:580px;max-width:100%;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.4);';
+      box.innerHTML = `
+        <h3 style="font-size:15px;font-weight:600;margin-bottom:6px;">Confirm File Move</h3>
+        <p style="font-size:12px;color:#666;margin-bottom:16px;">
+          Changing property, vendor, or date affects the filing path.
+          The document will be physically moved on disk.
+        </p>
+        <div style="font-size:10px;font-weight:700;color:#991b1b;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">From</div>
+        <div class="path-box from">${esc(fromPath)}</div>
+        <div style="font-size:10px;font-weight:700;color:#1a7a4a;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;">To</div>
+        <div class="path-box to">${esc(toPath)}</div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+          <button id="fmc-cancel" class="btn" style="min-width:90px;">Cancel</button>
+          <button id="fmc-confirm" class="btn green" style="min-width:140px;">Move File &amp; Save</button>
+        </div>
+      `;
+
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      document.getElementById('fmc-cancel').onclick  = () => { overlay.remove(); resolve(false); };
+      document.getElementById('fmc-confirm').onclick = () => { overlay.remove(); resolve(true);  };
+    });
+  }
 </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-from chatgpt_analyzer import analyze_document
+from chatgpt_analyzer import analyze_document  # text-based Claude wrapper
 from new_doc_detector import is_new_document
 from confidence_scorer import score_document
 from user_review import review_extracted_data
@@ -14,7 +14,7 @@ Due Date: 03/31/2026
 Amount Due: $253.92
 """
 
-# Step 1: Extract with ChatGPT
+# Step 1: Extract with Claude
 extracted = analyze_document(test_text)
 print("\n--- EXTRACTED DATA ---")
 print(json.dumps(extracted, indent=2))

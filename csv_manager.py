@@ -99,6 +99,10 @@ MASTER_LOG_FIELDS = [
     "confidence_score",           # high / medium / low (Claude overall)
     "claude_used",                # Always True in this version
     "duplicate_check_fields",     # Audit trail of fields used for dedup
+
+    # ── Audit ─────────────────────────────────────────────────
+    "manually_edited",            # "yes" if record was manually edited after filing
+    "last_edited_timestamp",      # ISO timestamp of last manual edit
 ]
 
 
@@ -138,7 +142,12 @@ def read_csv_as_dicts(file_path: str) -> list[dict]:
     if not os.path.exists(file_path):
         return []
     with open(file_path, mode="r", encoding="utf-8") as f:
-        return list(csv.DictReader(f))
+        rows = list(csv.DictReader(f))
+    # DictReader stores extra columns (beyond the header) under a None key.
+    # Strip it so json.dumps(sort_keys=True) doesn't crash on None < "string".
+    for row in rows:
+        row.pop(None, None)
+    return rows
 
 
 def write_csv(file_path: str, fieldnames: list, rows: list[dict]):
@@ -270,7 +279,25 @@ def delete_master_log_record(record: dict) -> bool:
 
 # === REFERENCE TABLE ===
 
+# Categories where account_number is absent — keyed by vendor+property+unit instead
+_ACCOUNT_OPTIONAL_CATEGORIES: frozenset[str] = frozenset({
+    "handyman services", "handyman", "insurance", "tax", "hoa",
+})
+
+
 def is_reference_duplicate(existing_row: dict, new_row: dict) -> bool:
+    ex_cat  = normalize_key(existing_row.get("vendor_category", ""))
+    new_cat = normalize_key(new_row.get("vendor_category", ""))
+
+    # For no-account categories: key is vendor + property + unit
+    if ex_cat in _ACCOUNT_OPTIONAL_CATEGORIES or new_cat in _ACCOUNT_OPTIONAL_CATEGORIES:
+        return (
+            normalize_key(existing_row.get("vendor_name", "")) == normalize_key(new_row.get("vendor_name", "")) and
+            normalize_key(existing_row.get("property", "")) == normalize_key(new_row.get("property", "")) and
+            normalize_key(existing_row.get("unit", "")) == normalize_key(new_row.get("unit", ""))
+        )
+
+    # Standard account-number based dedup
     ex_account  = normalize_key(existing_row.get("account_number", ""))
     new_account = normalize_key(new_row.get("account_number", ""))
     if not (ex_account and new_account):
@@ -351,6 +378,8 @@ def build_master_log_row(record: dict) -> dict:
         "confidence_score":           normalize_value(record.get("confidence_score")),
         "claude_used":                "True",
         "duplicate_check_fields":     "vendor_name|account_number|document_date|amount_due",
+        "manually_edited":            "",
+        "last_edited_timestamp":      "",
     }
 
 
@@ -372,14 +401,14 @@ def get_record_by_index(index: int) -> dict | None:
     return None
 
 
-def update_record_by_index(index: int, updates: dict) -> bool:
+def update_record_by_index(index: int, updates: dict, skip_audit: bool = False) -> bool:
     """
     Update a single master log record by row index.
     Only updatable fields are written — system fields are protected.
     Returns True if updated, False if index out of range.
     """
     PROTECTED_FIELDS = {
-        "timestamp", "source_file", "final_storage_path",
+        "timestamp", "source_file",
         "confidence_score", "claude_used", "duplicate_check_fields",
     }
     rows = read_csv_as_dicts(MASTER_LOG_CSV)
@@ -393,6 +422,11 @@ def update_record_by_index(index: int, updates: dict) -> bool:
     # Recalculate year_month if document_date changed
     if "document_date" in updates:
         rows[index]["year_month"] = derive_year_month(rows[index]["document_date"])
+
+    # Audit trail — always stamp manual edits unless called internally
+    if not skip_audit:
+        rows[index]["manually_edited"] = "yes"
+        rows[index]["last_edited_timestamp"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     write_csv(MASTER_LOG_CSV, MASTER_LOG_FIELDS, rows)
     print(f"  [CSV] Record updated at index {index}: "

@@ -1,4 +1,4 @@
-from chatgpt_analyzer import analyze_document
+from chatgpt_analyzer import analyze_document  # text-based Claude wrapper
 import json
 
 test_text = """

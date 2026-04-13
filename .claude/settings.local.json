@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(curl -s http://localhost:5000/)",
+      "Bash(venv/Scripts/pip install:*)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(python:*)",
+      "Read(//d/PropertyDocs/**)",
+      "Read(//d/Scans/Working/**)",
+      "Read(//d/Scans/Filed/**)",
+      "Bash(where python:*)",
+      "Bash(venv/Scripts/python -c ':*)",
+      "Bash(venv/Scripts/python -)",
+      "Bash(curl -s http://localhost:5000/api/queue)",
+      "Bash(curl:*)",
+      "Bash(netstat -ano)",
+      "Bash(tasklist /FI \"PID eq 32164\")",
+      "Bash(tasklist /FI \"PID eq 11012\")",
+      "Bash(powershell:*)"
+    ]
+  }
+}
