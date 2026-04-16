@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Coverage Matrix — Scanner MVP</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; color: #1a1a1a; font-size: 14px; }
+
+  .header { background: #1a1a1a; color: #fff; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+  .header h1 { font-size: 16px; font-weight: 500; letter-spacing: 0.05em; }
+  .header a.back { font-size: 12px; color: #9ca3af; text-decoration: none; }
+  .header a.back:hover { color: #e5e7eb; }
+
+  .summary-bar { background: #fff; border-bottom: 1px solid #e5e5e0; padding: 10px 24px; display: flex; gap: 28px; align-items: center; flex-wrap: wrap; }
+  .sum-item { display: flex; flex-direction: column; align-items: center; }
+  .sum-value { font-size: 22px; font-weight: 700; line-height: 1; }
+  .sum-label { font-size: 10px; color: #888; text-transform: uppercase; letter-spacing: 0.06em; margin-top: 2px; }
+  .sum-value.filed   { color: #15803d; }
+  .sum-value.missing { color: #b91c1c; }
+  .sum-value.total   { color: #1a1a1a; }
+
+  .year-nav { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .year-nav button { background: #f0f0e8; border: 1px solid #d0d0c8; border-radius: 6px;
+                     padding: 4px 10px; font-size: 14px; cursor: pointer; color: #333; }
+  .year-nav button:hover { background: #e8f5ee; border-color: #1a7a4a; color: #1a7a4a; }
+  .year-nav .year-label { font-size: 18px; font-weight: 700; min-width: 52px; text-align: center; }
+
+  .tabs { padding: 12px 24px 0; display: flex; gap: 4px; border-bottom: 1px solid #e5e5e0; background: #fff; }
+  .tab { padding: 6px 14px; border-radius: 6px 6px 0 0; font-size: 12px; font-weight: 500; cursor: pointer;
+         border: 1px solid transparent; border-bottom: none; color: #555; background: #f0f0e8; }
+  .tab:hover { background: #e8f5ee; color: #1a7a4a; }
+  .tab.active { background: #fff; border-color: #e5e5e0; color: #1a1a1a; border-bottom: 1px solid #fff; margin-bottom: -1px; }
+
+  .matrix-wrap { padding: 20px 24px; overflow-x: auto; }
+  .matrix-table { border-collapse: collapse; width: 100%; }
+  .matrix-table th { padding: 5px 8px; font-size: 10px; font-weight: 600; color: #555; text-transform: uppercase;
+                      letter-spacing: 0.05em; background: #f0f0e8; border: 1px solid #e5e5e0; white-space: nowrap; }
+  .matrix-table th.month-head { text-align: right; min-width: 58px; }
+  .matrix-table th.ytd-head   { text-align: right; min-width: 62px; background: #e8f0e8; }
+  .matrix-table td { padding: 4px 8px; border: 1px solid #e5e5e0; font-size: 12px; vertical-align: middle; }
+  .matrix-table tr:hover td { background: #f8f8f6; }
+
+  .group-row td { background: #e8eef5; font-size: 11px; font-weight: 700; color: #334; padding: 4px 10px;
+                  text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .subtotal-row td { background: #f5f5f0; font-size: 11px; font-weight: 600; color: #444;
+                     border-top: 2px solid #d0d0c8; }
+  .grand-total-row td { background: #d0d0d0; color: #1a1a1a; font-size: 12px; font-weight: 700;
+                        border-top: 2px solid #b0b0b0; }
+
+  .col-vendor  { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .col-account { color: #666; font-family: monospace; font-size: 11px; white-space: nowrap; }
+  .col-unit    { color: #888; font-size: 11px; }
+  .col-cat     { color: #888; font-size: 11px; }
+
+  .amt-cell { text-align: right; white-space: nowrap; cursor: pointer; }
+  .amt-cell:hover { background: #e8f5ee !important; }
+  .amt-miss    { text-align: right; color: #ccc; font-size: 11px; }
+  .amt-no-bill { text-align: right; color: #aaa; font-size: 11px; background: #f0f0ec; }
+  .amt-ytd  { text-align: right; font-weight: 600; background: #f5f8f5; font-size: 11px; }
+  .grand-total-row .amt-ytd { background: #c8d0c8; }
+
+  /* action popup */
+  .act-popup { display: none; position: fixed; background: #fff; border: 1px solid #d0d0c8;
+               border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.16); padding: 10px 12px;
+               z-index: 200; min-width: 170px; }
+  .act-popup.open { display: block; }
+  .act-popup-title { font-size: 11px; color: #888; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  .act-btn { display: block; width: 100%; text-align: left; padding: 6px 10px; margin-bottom: 4px;
+             border: 1px solid #d0d0c8; border-radius: 5px; background: #f8f8f6; font-size: 12px;
+             font-weight: 500; cursor: pointer; color: #1a1a1a; }
+  .act-btn:hover { background: #e8f5ee; border-color: #1a7a4a; color: #1a7a4a; }
+  .act-btn:last-child { margin-bottom: 0; }
+  .act-btn.disabled { color: #aaa; cursor: default; }
+  .act-btn.disabled:hover { background: #f8f8f6; border-color: #d0d0c8; color: #aaa; }
+
+  .empty-state   { padding: 40px; text-align: center; color: #888; font-size: 13px; }
+  .loading-state { padding: 40px; text-align: center; color: #aaa; font-size: 13px; }
+  .btn { padding: 6px 14px; border-radius: 6px; border: none; font-size: 12px; font-weight: 500; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Coverage Matrix</h1>
+  <a class="back" href="/">← Dashboard</a>
+</div>
+
+<div class="summary-bar">
+  <div class="sum-item">
+    <div class="sum-value total" id="sum-expected">—</div>
+    <div class="sum-label">Expected</div>
+  </div>
+  <div class="sum-item">
+    <div class="sum-value filed" id="sum-filed">—</div>
+    <div class="sum-label">Filed</div>
+  </div>
+  <div class="sum-item">
+    <div class="sum-value missing" id="sum-missing">—</div>
+    <div class="sum-label">Missing</div>
+  </div>
+  <div class="year-nav">
+    <button onclick="changeYear(-1)">&#8592;</button>
+    <span class="year-label" id="year-label">—</span>
+    <button onclick="changeYear(1)">&#8594;</button>
+  </div>
+</div>
+
+<div class="tabs" id="tabs">
+  <div class="tab active" data-prop="">All Properties</div>
+</div>
+
+<div class="matrix-wrap">
+  <div class="loading-state" id="loading">Loading coverage data…</div>
+  <table class="matrix-table" id="matrix" style="display:none;">
+    <thead id="matrix-head"></thead>
+    <tbody id="matrix-body"></tbody>
+  </table>
+  <div class="empty-state" id="empty" style="display:none;">No accounts found.</div>
+</div>
+
+<!-- Action popup (Edit / View PDF) -->
+<div class="act-popup" id="act-popup">
+  <div class="act-popup-title" id="act-title"></div>
+  <button class="act-btn" id="act-edit"    onclick="actEdit()">✏ Edit Record</button>
+  <button class="act-btn" id="act-viewpdf" onclick="actViewPdf()">📄 View PDF</button>
+</div>
+
+<script>
+  let _matrix      = null;
+  let _activeProperty = '';
+  let _currentYear = new Date().getFullYear();
+  let _tabsBuilt   = false;
+  let _popDoc      = null;   // doc attached to currently-open popup
+
+  // ── utilities ────────────────────────────────────────────────────────────
+  function _parseAmt(v) {
+    if (!v) return 0;
+    const n = parseFloat(String(v).replace(/[$,]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+  function _fmtAmt(n) {
+    return n === 0 ? '' : '$' + n.toFixed(2);
+  }
+  function _fmtMonth(ym) {
+    const [y, m] = ym.split('-');
+    return new Date(+y, +m - 1, 1).toLocaleString('en-US', {month: 'short'});
+  }
+
+  // ── fetch + render ────────────────────────────────────────────────────────
+  async function load(year) {
+    year = year || _currentYear;
+    document.getElementById('loading').style.display = '';
+    document.getElementById('matrix').style.display  = 'none';
+    document.getElementById('empty').style.display   = 'none';
+    document.getElementById('loading').textContent   = 'Loading…';
+
+    const data = await fetch('/api/coverage-matrix?year=' + year).then(r => r.json()).catch(() => null);
+    if (!data) { document.getElementById('loading').textContent = 'Failed to load.'; return; }
+
+    _matrix      = data;
+    _currentYear = data.year;
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('year-label').textContent = _currentYear;
+    document.getElementById('sum-expected').textContent = data.summary.total_expected;
+    document.getElementById('sum-filed').textContent    = data.summary.total_filed;
+    document.getElementById('sum-missing').textContent  = data.summary.total_missing;
+
+    if (!_tabsBuilt) {
+      const props  = [...new Set(data.rows.map(r => r.property).filter(Boolean))].sort();
+      const tabsEl = document.getElementById('tabs');
+      props.forEach(p => {
+        const t = document.createElement('div');
+        t.className = 'tab'; t.dataset.prop = p; t.textContent = p;
+        t.addEventListener('click', () => setProperty(p));
+        tabsEl.appendChild(t);
+      });
+      _tabsBuilt = true;
+    }
+    renderMatrix(data, _activeProperty);
+  }
+
+  function changeYear(d) { load(_currentYear + d); }
+
+  function setProperty(prop) {
+    _activeProperty = prop;
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.prop === prop));
+    renderMatrix(_matrix, prop);
+  }
+  document.querySelector('.tab[data-prop=""]').addEventListener('click', () => setProperty(''));
+
+  // ── matrix renderer ───────────────────────────────────────────────────────
+  function renderMatrix(data, propFilter) {
+    const tableEl = document.getElementById('matrix');
+    const headEl  = document.getElementById('matrix-head');
+    const bodyEl  = document.getElementById('matrix-body');
+    const emptyEl = document.getElementById('empty');
+    const rows    = propFilter ? data.rows.filter(r => r.property === propFilter) : data.rows;
+
+    if (!rows.length) { tableEl.style.display = 'none'; emptyEl.style.display = ''; return; }
+    emptyEl.style.display = 'none';
+    tableEl.style.display = '';
+
+    // ── header row ──────────────────────────────────────────────────────────
+    headEl.innerHTML = '';
+    const hr = document.createElement('tr');
+    ['Vendor', 'Account', 'Unit', 'Cat'].forEach(lbl => {
+      const th = document.createElement('th'); th.textContent = lbl; hr.appendChild(th);
+    });
+    data.months.forEach(m => {
+      const th = document.createElement('th');
+      th.className = 'month-head'; th.textContent = _fmtMonth(m); hr.appendChild(th);
+    });
+    const thYtd = document.createElement('th');
+    thYtd.className = 'ytd-head'; thYtd.textContent = 'YTD'; hr.appendChild(thYtd);
+    headEl.appendChild(hr);
+
+    // ── body ────────────────────────────────────────────────────────────────
+    bodyEl.innerHTML = '';
+
+    // Grand-total accumulators
+    const grandTotals = Object.fromEntries(data.months.map(m => [m, 0]));
+    let   grandYtd    = 0;
+
+    // Group rows by property
+    const byProp = {};
+    rows.forEach(row => {
+      const p = row.property || 'Unknown';
+      (byProp[p] = byProp[p] || []).push(row);
+    });
+
+    Object.entries(byProp).forEach(([prop, propRows]) => {
+      // Property group header
+      if (!propFilter) {
+        const gr = document.createElement('tr');
+        gr.className = 'group-row';
+        const td = document.createElement('td');
+        td.colSpan = 5 + data.months.length;
+        td.textContent = prop;
+        gr.appendChild(td); bodyEl.appendChild(gr);
+      }
+
+      // Per-property month accumulators
+      const propTotals = Object.fromEntries(data.months.map(m => [m, 0]));
+      let   propYtd    = 0;
+
+      propRows.forEach(row => {
+        const tr = document.createElement('tr');
+
+        // Info cells
+        [
+          { cls: 'col-vendor',  val: row.vendor_name,    title: row.vendor_name },
+          { cls: 'col-account', val: row.account_number || '—' },
+          { cls: 'col-unit',    val: row.unit || '—' },
+          { cls: 'col-cat',     val: row.vendor_category || '—' },
+        ].forEach(({cls, val, title}) => {
+          const td = document.createElement('td');
+          td.className = cls; td.textContent = val;
+          if (title) td.title = title;
+          tr.appendChild(td);
+        });
+
+        // Month cells + YTD
+        let rowYtd = 0;
+        data.months.forEach(m => {
+          const cell = row.cells[m];
+          const td   = document.createElement('td');
+          if (!cell || cell.status === 'missing' || cell.status === 'optional') {
+            td.className = 'amt-miss'; td.textContent = '—';
+          } else if (cell.status === 'not_expected') {
+            td.className = 'amt-no-bill'; td.textContent = '⚫';
+          } else {
+            const amt = _parseAmt(cell.doc && cell.doc.amount_due);
+            td.className = 'amt-cell';
+            td.textContent = _fmtAmt(amt) || '—';
+            if (amt) { rowYtd += amt; propTotals[m] += amt; grandTotals[m] += amt; }
+            if (cell.doc) {
+              td.addEventListener('click', e => openActPopup(e, cell.doc,
+                `${row.vendor_name} — ${_fmtMonth(m)} ${_currentYear}`));
+            }
+          }
+          tr.appendChild(td);
+        });
+
+        propYtd  += rowYtd;
+        grandYtd += rowYtd;
+
+        const tdYtd = document.createElement('td');
+        tdYtd.className = 'amt-ytd';
+        tdYtd.textContent = rowYtd ? '$' + rowYtd.toFixed(2) : '—';
+        tr.appendChild(tdYtd);
+
+        bodyEl.appendChild(tr);
+      });
+
+      // Property subtotal row
+      const sr = document.createElement('tr');
+      sr.className = 'subtotal-row';
+      const stLabel = document.createElement('td');
+      stLabel.colSpan = 4; stLabel.textContent = prop + ' total';
+      stLabel.style.paddingLeft = '10px';
+      sr.appendChild(stLabel);
+      data.months.forEach(m => {
+        const td = document.createElement('td');
+        td.className = 'amt-cell'; td.style.cursor = 'default';
+        td.textContent = propTotals[m] ? '$' + propTotals[m].toFixed(2) : '—';
+        sr.appendChild(td);
+      });
+      const stYtd = document.createElement('td');
+      stYtd.className = 'amt-ytd';
+      stYtd.textContent = propYtd ? '$' + propYtd.toFixed(2) : '—';
+      sr.appendChild(stYtd);
+      bodyEl.appendChild(sr);
+    });
+
+    // Grand total row
+    const gtr = document.createElement('tr');
+    gtr.className = 'grand-total-row';
+    const gtLabel = document.createElement('td');
+    gtLabel.colSpan = 4; gtLabel.textContent = 'Grand Total';
+    gtLabel.style.paddingLeft = '10px';
+    gtr.appendChild(gtLabel);
+    data.months.forEach(m => {
+      const td = document.createElement('td');
+      td.className = 'amt-cell'; td.style.cursor = 'default'; td.style.color = '#fff';
+      td.textContent = grandTotals[m] ? '$' + grandTotals[m].toFixed(2) : '—';
+      gtr.appendChild(td);
+    });
+    const gtYtd = document.createElement('td');
+    gtYtd.className = 'amt-ytd';
+    gtYtd.textContent = grandYtd ? '$' + grandYtd.toFixed(2) : '—';
+    gtr.appendChild(gtYtd);
+    bodyEl.appendChild(gtr);
+  }
+
+  // ── action popup ─────────────────────────────────────────────────────────
+  function openActPopup(evt, doc, title) {
+    evt.stopPropagation();
+    _popDoc = doc;
+    const popup = document.getElementById('act-popup');
+    document.getElementById('act-title').textContent = title;
+
+    const hasPdf = !!(doc.final_storage_path);
+    document.getElementById('act-viewpdf').classList.toggle('disabled', !hasPdf);
+
+    // Position near click, keeping within viewport
+    popup.classList.add('open');
+    const x = Math.min(evt.clientX + 4, window.innerWidth  - popup.offsetWidth  - 8);
+    const y = Math.min(evt.clientY + 4, window.innerHeight - popup.offsetHeight - 8);
+    popup.style.left = x + 'px';
+    popup.style.top  = y + 'px';
+  }
+
+  function closeActPopup() {
+    document.getElementById('act-popup').classList.remove('open');
+    _popDoc = null;
+  }
+
+  function actEdit() {
+    if (!_popDoc || _popDoc.row_index == null) return;
+    closeActPopup();
+    window.location.href = '/?edit=' + _popDoc.row_index;
+  }
+
+  function actViewPdf() {
+    if (!_popDoc || !_popDoc.final_storage_path) return;
+    closeActPopup();
+    window.open('/api/view-file?path=' + encodeURIComponent(_popDoc.final_storage_path), '_blank');
+  }
+
+  document.addEventListener('click', e => {
+    if (!document.getElementById('act-popup').contains(e.target)) closeActPopup();
+  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeActPopup(); });
+
+  load();
+</script>
+</body>
+</html>

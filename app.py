@@ -7,10 +7,12 @@ Open:      http://localhost:5000
 """
 
 import os
+import re
 import json
 import shutil
 import threading
 import time
+import traceback
 from pathlib import Path
 from datetime import datetime
 from flask import Flask, jsonify, request, Response, send_from_directory
@@ -18,6 +20,8 @@ from flask_cors import CORS
 from dotenv import load_dotenv
 
 load_dotenv()
+
+from google_drive import drive_sync, do_daily_backup, should_run_daily_backup
 
 from PyPDF2 import PdfReader
 
@@ -42,6 +46,7 @@ from csv_manager import (
     get_record_by_index,
     update_record_by_index,
     delete_record_by_index,
+    delete_reference_if_orphaned,
     MASTER_LOG_CSV,
 )
 
@@ -66,6 +71,30 @@ def normalize_document_type(doc_type: str) -> str:
     return clean
 
 
+# ── Category normalisation ────────────────────────────────────────────────────
+_CATEGORY_MAP: dict[str, str] = {
+    "utility":           "Utilities",
+    "utilities":         "Utilities",
+    "utility bill":      "Utilities",
+    "utility_bill":      "Utilities",
+    "handyman services": "Handyman",
+    "handyman":          "Handyman",
+    "financial":         "Financial",
+    "insurance":         "Insurance",
+    "maintenance":       "Maintenance",
+    "repairs":           "Repairs",
+    "repair":            "Repairs",
+    "permits":           "Permits",
+    "licenses":          "Licenses",
+}
+
+
+def _normalize_category(category: str) -> str:
+    """Map any raw vendor_category string to a standard PropertyDocs folder name."""
+    key = (category or "").strip().lower()
+    return _CATEGORY_MAP.get(key, "NeedsReview")
+
+
 def infer_vendor_category(result: dict) -> str:
     """Infer vendor category from vendor name / document type when Claude hasn't set it."""
     vendor = str(
@@ -80,22 +109,23 @@ def infer_vendor_category(result: dict) -> str:
                    "internet", "public utilities"]
 
     if any(kw in vendor for kw in handyman_kw):
-        return "handyman services"
+        return "Handyman"
     if doc_type == "receipt":
-        return "supplier/store"
+        return "NeedsReview"
     if doc_type == "invoice":
-        return "service provider"
+        return "NeedsReview"
     if any(kw in vendor for kw in utility_kw):
-        return "utility"
+        return "Utilities"
     if doc_type == "bill":
-        return "utility"
-    return "other"
+        return "Utilities"
+    return "NeedsReview"
 
 INCOMING_DIR      = Path("D:/Scans/Incoming")
 WORKING_DIR       = Path("D:/Scans/Working")
 FILED_DIR         = Path("D:/Scans/Filed")
 ERROR_DIR         = Path("D:/Scans/Error")
 DUP_DIR           = Path("D:/Scans/Duplicates")
+DELETED_DIR       = Path("D:/Scans/Deleted")
 PROPERTY_DOCS_DIR = Path("D:/PropertyDocs")
 CONFIG_PATH       = Path(__file__).parent / "config.json"
 
@@ -350,11 +380,97 @@ def log_activity(message: str, level: str = "info"):
         activity_log.pop()
 
 
+# ================================================================
+# GOOGLE DRIVE SYNC HELPERS
+# ================================================================
+
+def _trigger_drive_sync(filed_pdf_path: Path, property_name: str,
+                         category: str = "", account_code: str = "") -> None:
+    """
+    Queue all post-filing Drive uploads (non-blocking — runs in background).
+    Called immediately after a document is confirmed & filed.
+    """
+    status = drive_sync.get_status()
+    if status["status"] == "unconfigured":
+        return   # Drive not set up — skip silently
+
+    # 1. Upload the filed PDF to its full 3-level folder path
+    if filed_pdf_path.exists():
+        drive_sync.queue_pdf_upload(filed_pdf_path, property_name,
+                                     category=category, account_code=account_code)
+
+    # 2. Upload updated master log
+    master_log = Path("data/document_master_log.csv")
+    if master_log.exists():
+        drive_sync.queue_appdata_upload(master_log)
+
+    # 3. Upload reference table (upsert_reference_record was called)
+    ref_table = Path("data/reference_table.csv")
+    if ref_table.exists():
+        drive_sync.queue_appdata_upload(ref_table)
+
+
+_ABBREV_STOPWORDS = frozenset({"of", "and", "the", "a", "an", "for", "in", "at", "by", "to"})
+
+
+def _vendor_abbrev(vendor: str) -> str:
+    """
+    Generate a short uppercase folder-name abbreviation from a vendor name.
+
+    Rules (in priority order):
+      1. All-caps / acronym (e.g. EBMUD, PG&E)  → strip non-alpha, use up to 6 chars
+      2. 2 significant words (e.g. Lacatis Construction) → first-initial + first-4 of word2
+      3. 3+ significant words → first letter of each significant word
+      4. 1 significant word  → first 4 alpha chars
+
+    Significant words = words not in _ABBREV_STOPWORDS.
+    """
+    # All-caps / acronym check (digits and & are allowed in the original, ignore them)
+    alpha_only = "".join(c for c in vendor if c.isalpha())
+    if alpha_only and alpha_only == alpha_only.upper():
+        return alpha_only[:6] or "UNKN"
+
+    # Tokenise and filter stopwords
+    tokens = re.findall(r"[A-Za-z]+", vendor)
+    significant = [t for t in tokens if t.lower() not in _ABBREV_STOPWORDS]
+
+    if not significant:
+        return alpha_only[:4].upper() or "UNKN"
+
+    if len(significant) == 1:
+        return significant[0][:4].upper()
+
+    if len(significant) == 2:
+        # First initial of word 1 + first 4 letters of word 2
+        return (significant[0][0] + significant[1][:4]).upper()
+
+    # 3+ words → initial of each
+    return "".join(t[0] for t in significant).upper()
+
+
 def build_filing_path(result: dict) -> Path:
     prop     = (result.get("property") or "Unknown Property").strip()
-    # Always use vendor_category as the subfolder — never fall back to document_type
-    category = (result.get("vendor_category") or "other").strip()
-    return PROPERTY_DOCS_DIR / prop / category
+    category = _normalize_category(result.get("vendor_category") or "")
+    vendor   = (
+        result.get("vendor_name_normalized")
+        or result.get("vendor_name_raw")
+        or result.get("vendor_name")
+        or "unknown"
+    ).strip()
+    account  = (result.get("account_number") or "").strip()
+
+    abbrev = _vendor_abbrev(vendor)
+
+    # Account suffix: last 4 stripped digits, or "0000" if no account
+    if account:
+        digits_only  = re.sub(r"[^0-9]", "", account)
+        acct_suffix  = digits_only[-4:] if digits_only else "0000"
+    else:
+        acct_suffix  = "0000"
+
+    account_code = f"{abbrev}_{acct_suffix}"
+
+    return PROPERTY_DOCS_DIR / prop / category / account_code
 
 
 def build_filename(result: dict, original_name: str) -> str:
@@ -500,6 +616,97 @@ def index():
     return send_from_directory("templates", "index.html")
 
 
+@app.route("/coverage")
+def coverage():
+    return send_from_directory("templates", "coverage.html")
+
+
+@app.route("/api/view-file", methods=["GET"])
+def view_file():
+    """Serve a filed document inline for the coverage matrix View PDF button."""
+    import mimetypes as _mime
+    path_str = request.args.get("path", "").strip()
+    if not path_str:
+        return jsonify({"error": "No path provided"}), 400
+
+    p = Path(path_str).resolve()
+
+    # Safety: restrict to known document roots only
+    _allowed_roots = [
+        Path("D:/PropertyDocs").resolve(),
+        Path("D:/Scans").resolve(),
+    ]
+    if not any(str(p).startswith(str(root)) for root in _allowed_roots):
+        return jsonify({"error": "Access denied: path outside allowed directories"}), 403
+
+    if not p.exists() or not p.is_file():
+        return jsonify({"error": f"File not found: {path_str}"}), 404
+
+    ext = p.suffix.lower()
+    mime_map = {
+        ".pdf":  "application/pdf",
+        ".jpg":  "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".png":  "image/png",
+        ".heic": "image/heic",
+        ".gif":  "image/gif",
+        ".webp": "image/webp",
+    }
+    mime_type = mime_map.get(ext) or _mime.guess_type(str(p))[0] or "application/octet-stream"
+
+    from flask import send_file as _send_file
+    return _send_file(str(p), mimetype=mime_type, as_attachment=False)
+
+
+@app.route("/api/view-scan", methods=["GET"])
+def view_scan():
+    """
+    Return an HTML viewer page for a scan file (Working → Incoming fallback).
+    Includes a minimal Print / Email toolbar above the embedded document.
+    """
+    import urllib.parse as _up
+    filename = request.args.get("filename", "").strip()
+    # Reject path traversal
+    if not filename or "/" in filename or "\\" in filename or ".." in filename:
+        return "Invalid filename", 400
+
+    for search_dir in [WORKING_DIR, INCOMING_DIR]:
+        p = search_dir / filename
+        if p.exists() and p.is_file():
+            view_url = "/api/view-file?path=" + _up.quote(str(p))
+            safe_name = filename.replace('"', '').replace("'", "")
+            html = f"""<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>{safe_name}</title>
+<style>
+  * {{ box-sizing:border-box; margin:0; padding:0; }}
+  body {{ display:flex; flex-direction:column; height:100vh; font-family:-apple-system,sans-serif; background:#1a1a1a; }}
+  .toolbar {{ padding:8px 16px; background:#1a1a1a; color:#fff; display:flex; align-items:center; gap:10px; flex-shrink:0; }}
+  .toolbar .fname {{ font-size:13px; opacity:0.65; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }}
+  .tb-btn {{ padding:5px 14px; border:none; border-radius:5px; cursor:pointer; font-size:13px; font-weight:500; }}
+  .tb-print {{ background:#2563eb; color:#fff; }}
+  .tb-print:hover {{ background:#1d4ed8; }}
+  .tb-email {{ background:#059669; color:#fff; }}
+  .tb-email:hover {{ background:#047857; }}
+  iframe {{ flex:1; border:none; width:100%; background:#fff; }}
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <span class="fname">{safe_name}</span>
+    <button class="tb-btn tb-print" onclick="document.getElementById('sf').contentWindow.print()">🖨 Print</button>
+    <button class="tb-btn tb-email" onclick="window.location='mailto:?subject={_up.quote(safe_name)}'">✉ Email</button>
+  </div>
+  <iframe id="sf" src="{view_url}"></iframe>
+</body>
+</html>"""
+            return html, 200, {"Content-Type": "text/html; charset=utf-8"}
+
+    return "File not found", 404
+
+
 # ================================================================
 # ROUTES — Config / dropdowns
 # ================================================================
@@ -606,69 +813,46 @@ def get_canonical_values():
 
 @app.route("/api/queue", methods=["GET"])
 def get_queue():
-    incoming_files = (
-        list(INCOMING_DIR.glob("*.pdf")) +
-        list(INCOMING_DIR.glob("*.jpg")) +
-        list(INCOMING_DIR.glob("*.jpeg")) +
-        list(INCOMING_DIR.glob("*.png"))
-    )
-
-    for f in incoming_files:
-        # Quick lock-free check — skip files the watcher already promoted to review.
-        # We re-validate inside the lock before any mutation (see below).
-        with _queue_lock:
-            current_entry = queue.get(f.name)
-
-        if current_entry and current_entry.get("status") == "review":
-            continue  # already handled; nothing to do
-
-        # Heavy I/O happens OUTSIDE the lock to avoid blocking other threads.
-        sidecar_data, validation = _load_sidecar(f)
-
-        with _queue_lock:
-            entry = queue.get(f.name)
-            if entry is None:
-                # Brand-new file — either it came in as a pre-analyzed sidecar
-                # pair or it's a plain pending document.
-                queue[f.name] = {
-                    "id":         f.name,
-                    "filename":   f.name,
-                    "path":       str(f),
-                    "status":     "review"  if sidecar_data else "pending",
-                    "result":     sidecar_data,
-                    "validation": validation if sidecar_data else None,
-                    "error":      None,
-                    "added":      datetime.now().strftime("%H:%M:%S"),
-                }
-                if sidecar_data:
-                    log_activity(f"Pre-analyzed document ready for review: {f.name}", "info")
-            elif entry["status"] != "review" and sidecar_data is not None:
-                # File was already in queue (pending / processing / error / filed)
-                # but a sidecar appeared — promote it.  Covers:
-                #   • pending:    watcher processed faster than SSE
-                #   • processing: SSE was interrupted
-                #   • error:      previous failure, watcher retry succeeded
-                #   • filed:      document re-queued for re-review
-                entry.update({
-                    "status":     "review",
-                    "result":     sidecar_data,
-                    "validation": validation,
-                    "error":      None,
-                })
-                log_activity(f"Sidecar detected — upgraded to review: {f.name}", "info")
-
-    current_names = {f.name for f in incoming_files}
+    # Only files explicitly added by the user (via upload or browse-and-add)
+    # live in the queue dict.  We never scan INCOMING_DIR automatically.
+    # Prune any pending/error entries whose file has since disappeared from disk.
     with _queue_lock:
         stale = [
-            k for k in list(queue.keys())
-            if queue[k]["status"] in ("pending", "error")
-            and k not in current_names
+            k for k, v in queue.items()
+            if v["status"] in ("pending", "error")
+            and not Path(v.get("path", "")).exists()
         ]
         for k in stale:
             del queue[k]
-        result = list(queue.values())
-    print(f"[Queue] get_queue returning {len(result)} item(s): {[e['filename'] + '/' + e['status'] for e in result]}")
+        raw = list(queue.values())
+
+    # Annotate each item with file mtime for the UI card display
+    result = []
+    for item in raw:
+        out = dict(item)
+        p = Path(item.get("path", ""))
+        try:
+            out["mtime"] = p.stat().st_mtime if p.exists() else None
+        except OSError:
+            out["mtime"] = None
+        result.append(out)
     return jsonify(result)
+
+
+def _add_to_queue(filename: str, path: Path) -> None:
+    """Add a file to the in-memory queue as pending (thread-safe)."""
+    with _queue_lock:
+        if filename not in queue:
+            queue[filename] = {
+                "id":         filename,
+                "filename":   filename,
+                "path":       str(path),
+                "status":     "pending",
+                "result":     None,
+                "validation": None,
+                "error":      None,
+                "added":      datetime.now().strftime("%H:%M:%S"),
+            }
 
 
 @app.route("/api/queue/upload", methods=["POST"])
@@ -678,12 +862,13 @@ def upload_file():
     f = request.files["file"]
     if not f.filename:
         return jsonify({"error": "Empty filename"}), 400
-    # Prevent re-processing a file that was already filed
     existing = get_all_master_records()
     if any(r.get("source_file") == f.filename for r in existing):
         log_activity(f"Skipped duplicate source: {f.filename}", "warning")
         return jsonify({"ok": False, "duplicate_source": True, "filename": f.filename}), 409
-    f.save(str(INCOMING_DIR / f.filename))
+    dest = INCOMING_DIR / f.filename
+    f.save(str(dest))
+    _add_to_queue(f.filename, dest)
     log_activity(f"Uploaded: {f.filename}", "info")
     return jsonify({"ok": True, "filename": f.filename})
 
@@ -703,7 +888,13 @@ def upload_from_path():
         log_activity(f"Skipped duplicate source: {p.name}", "warning")
         return jsonify({"ok": False, "duplicate_source": True, "filename": p.name}), 409
     dest = INCOMING_DIR / p.name
+    # If the file is already in Incoming, skip the copy and queue it directly
+    if p.parent.resolve() == INCOMING_DIR.resolve():
+        _add_to_queue(p.name, str(p))
+        log_activity(f"Added from path: {p.name}", "info")
+        return jsonify({"ok": True, "filename": p.name})
     shutil.copy(str(p), str(dest))
+    _add_to_queue(p.name, str(dest))
     log_activity(f"Added from path: {p.name}", "info")
     return jsonify({"ok": True, "filename": p.name})
 
@@ -723,7 +914,7 @@ def remove_from_queue(filename):
 # ROUTES — Processing with SSE stage progress
 # ================================================================
 
-@app.route("/api/process/<filename>", methods=["POST"])
+@app.route("/api/process/<filename>", methods=["GET", "POST"])
 def process_file(filename):
     file_path = INCOMING_DIR / filename
     if not file_path.exists():
@@ -967,6 +1158,20 @@ def confirm_document(filename):
             dest_path    = dest_folder / new_filename
         dest_folder.mkdir(parents=True, exist_ok=True)
 
+        # ── Destination collision check ─────────────────────────────
+        if dest_path.exists():
+            log_activity(
+                f"Filing blocked — destination already exists: {dest_path.name}", "warning"
+            )
+            return jsonify({
+                "ok": False, "duplicate": True,
+                "reason": (
+                    "A file already exists at this location — "
+                    "this document may already be filed"
+                ),
+                "original": {"filed_on": "", "filed_path": str(dest_path)},
+            }), 409
+
         if working_path.exists():
             shutil.move(str(working_path), str(dest_path))
         else:
@@ -1026,12 +1231,13 @@ def confirm_document(filename):
             }), 409
 
         upsert_reference_record({
-            "vendor_name":     master_record["vendor_name"],
-            "account_number":  master_record["account_number"],
-            "vendor_category": master_record["vendor_category"],
-            "property":        master_record["property"],
-            "unit":            master_record["unit"],
-            "service_address": master_record["service_address"],
+            "vendor_name":       master_record["vendor_name"],
+            "account_number":    master_record["account_number"],
+            "vendor_category":   master_record["vendor_category"],
+            "property":          master_record["property"],
+            "unit":              master_record["unit"],
+            "service_address":   master_record["service_address"],
+            "billing_frequency": data.get("billing_frequency", ""),
         })
 
         # Both CSV operations succeeded — safe to remove sidecar now.
@@ -1047,6 +1253,16 @@ def confirm_document(filename):
         log_activity(
             f"Filed: {data.get('vendor_name_normalized','?')} — "
             f"${data.get('amount_due','?')} → {dest_path.parent.name}", "success")
+
+        # ── Google Drive sync (non-blocking background uploads) ──────────
+        # dest_path = PROPERTY_DOCS_DIR / prop / category / account_code / filename
+        _filing_folder = dest_path.parent          # …/account_code/
+        _drive_category     = _filing_folder.parent.name   # category folder
+        _drive_account_code = _filing_folder.name          # account_code folder
+        _trigger_drive_sync(dest_path, data.get("property", ""),
+                             category=_drive_category,
+                             account_code=_drive_account_code)
+
         return jsonify({
             "ok": True,
             "filed_path":   str(dest_path),
@@ -1108,6 +1324,17 @@ def get_activity():
     return jsonify(activity_log[:20])
 
 
+@app.route("/api/activity/log", methods=["POST"])
+def post_activity_log():
+    """Accept a client-side timing message and add it to the activity feed."""
+    data  = request.get_json(silent=True) or {}
+    msg   = (data.get("message") or "").strip()
+    level = data.get("level", "info")
+    if msg:
+        log_activity(msg, level)
+    return jsonify({"ok": True})
+
+
 @app.route("/api/status", methods=["GET"])
 def get_status():
     with _queue_lock:
@@ -1145,11 +1372,20 @@ def get_master_log():
 
 @app.route("/api/master-log/<int:index>", methods=["GET"])
 def get_master_log_record(index):
-    """Get a single master log record by its CSV row_index."""
+    """Get a single master log record by its CSV row_index.
+    Also injects billing_frequency from the matching reference table row."""
     record = get_record_by_index(index)
     if record is None:
         return jsonify({"error": "Record not found"}), 404
     record["_row_index"] = index
+    # Enrich with billing_frequency from reference table
+    acct = (record.get("account_number") or "").strip()
+    if acct:
+        ref_rows = read_csv_as_dicts(str(Path("data/reference_table.csv")))
+        matched = next((r for r in ref_rows if (r.get("account_number") or "").strip() == acct), None)
+        record["billing_frequency"] = (matched.get("billing_frequency") or "") if matched else ""
+    else:
+        record.setdefault("billing_frequency", "")
     return jsonify(record)
 
 
@@ -1166,8 +1402,9 @@ def update_master_log_record(index):
         return jsonify({"error": "No data provided"}), 400
 
     # Pull out optional file-move instructions before writing to CSV
-    move_file       = data.pop("move_file", False)
-    new_filing_path = data.pop("new_filing_path", "")
+    move_file         = data.pop("move_file", False)
+    new_filing_path   = data.pop("new_filing_path", "")
+    billing_frequency = data.pop("billing_frequency", None)  # reference table field, not master log
 
     old_record = get_record_by_index(index)
     if old_record is None:
@@ -1201,6 +1438,20 @@ def update_master_log_record(index):
             except Exception as e:
                 file_error = str(e)
 
+    # Update billing_frequency in reference table if provided
+    if billing_frequency is not None:
+        acct = old_record.get("account_number", "")
+        if acct:
+            upsert_reference_record({
+                "vendor_name":       old_record.get("vendor_name", ""),
+                "account_number":    acct,
+                "vendor_category":   old_record.get("vendor_category", ""),
+                "property":          old_record.get("property", ""),
+                "unit":              old_record.get("unit", ""),
+                "service_address":   old_record.get("service_address", ""),
+                "billing_frequency": billing_frequency,
+            })
+
     vendor = old_record.get("vendor_name", "?")
     date   = old_record.get("document_date", "?")
     log_activity(
@@ -1219,65 +1470,159 @@ def update_master_log_record(index):
 @app.route("/api/master-log/<int:index>", methods=["DELETE"])
 def delete_master_log_record_route(index):
     """
-    Delete a master log record and its filed PDF.
+    Delete a master log record and (optionally) its filed PDF.
     Body: { "delete_file": true }
+
+    Contract:
+      • The CSV record is deleted if found, regardless of file status.
+      • Physical file missing → ok:true, file_deleted:false, file_error set.
+      • Physical file present → deleted, file_deleted:true.
+      • Only returns ok:false when the CSV delete itself fails.
+      • On success, orphaned reference-table entries are also removed.
     """
-    data         = request.get_json() or {}
-    delete_file  = data.get("delete_file", True)
+    try:
+        data        = request.get_json(silent=True) or {}
+        delete_file = data.get("delete_file", True)
 
-    # Grab info before deleting
-    record = get_record_by_index(index)
-    if record is None:
-        return jsonify({"error": "Record not found"}), 404
+        # ── 1. Load record BEFORE deleting (need vendor/path info) ──
+        print(f"[Delete] Attempting delete at index={index}")
+        record = get_record_by_index(index)
+        if record is None:
+            print(f"[Delete] Record not found at index={index}")
+            return jsonify({"ok": False, "error": f"Record not found at index {index}"}), 404
 
-    vendor       = record.get("vendor_name", "?")
-    date         = record.get("document_date", "?")
-    filed_path   = record.get("final_storage_path", "")
+        vendor     = record.get("vendor_name", "?")
+        account    = record.get("account_number", "")
+        date       = record.get("document_date", "?")
+        filed_path = (record.get("final_storage_path") or "").strip()
+        print(f"[Delete] Found record: vendor={vendor!r} date={date!r} path={filed_path!r}")
 
-    success, _ = delete_record_by_index(index)
-    if not success:
-        return jsonify({"error": "Could not delete record"}), 500
+        # ── 2. Delete the CSV record — this is the critical step ────
+        success, _ = delete_record_by_index(index)
+        if not success:
+            msg = f"Index {index} out of range after re-read"
+            print(f"[Delete] FAILED: {msg}")
+            return jsonify({"ok": False, "error": msg}), 500
 
-    file_deleted = False
-    file_error   = ""
-    if delete_file and filed_path:
+        # ── 3. Move physical file to D:/Scans/Deleted/ with timestamp ──
+        file_moved  = False
+        file_error  = ""
+        moved_to    = ""
+        if delete_file and filed_path:
+            try:
+                p = Path(filed_path)
+                if p.exists():
+                    DELETED_DIR.mkdir(parents=True, exist_ok=True)
+                    ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    new_name = f"{p.stem}_deleted_{ts}{p.suffix}"
+                    dest     = DELETED_DIR / new_name
+                    shutil.move(str(p), str(dest))
+                    moved_to   = str(dest)
+                    file_moved = True
+                    print(f"[Delete] Moved file to: {dest}")
+                    # Mirror deletion on Google Drive (move to PropertyDocs/Deleted/)
+                    try:
+                        drive_sync.queue_file_delete(filed_path)
+                    except Exception as drive_exc:
+                        print(f"[Delete] Drive delete queue failed: {drive_exc}")
+                else:
+                    file_error = f"File not on disk: {filed_path}"
+                    print(f"[Delete] {file_error}")
+            except Exception as exc:
+                file_error = str(exc)
+
+        # ── 4. Remove orphaned reference-table entry if applicable ──
+        ref_removed = False
         try:
-            p = Path(filed_path)
-            if p.exists():
-                p.unlink()
-                file_deleted = True
-            else:
-                file_error = "File not found at stored path"
-        except Exception as e:
-            file_error = str(e)
+            ref_removed = delete_reference_if_orphaned(vendor, account)
+        except Exception as exc:
+            log_activity(f"Reference cleanup error for {vendor}: {exc}", "warning")
 
-    log_activity(
-        f"Deleted: {vendor} {date}"
-        + (" + file" if file_deleted else ""), "warning")
+        log_activity(
+            f"Deleted: {vendor} {date}"
+            + (" + file moved" if file_moved else "")
+            + (" + ref" if ref_removed else ""),
+            "warning",
+        )
 
-    return jsonify({
-        "ok":           True,
-        "file_deleted": file_deleted,
-        "file_error":   file_error,
-        "filed_path":   filed_path,
-    })
+        return jsonify({
+            "ok":          True,
+            "file_moved":  file_moved,
+            "file_error":  file_error,
+            "filed_path":  filed_path,
+            "moved_to":    moved_to,
+            "ref_removed": ref_removed,
+        })
+
+    except Exception as exc:
+        tb = traceback.format_exc()
+        print(f"[Delete] EXCEPTION at index={index}:\n{tb}")
+        log_activity(f"Delete error (index {index}): {exc}", "error")
+        return jsonify({"ok": False, "error": str(exc), "traceback": tb}), 500
 
 
 
+
+
+# ================================================================
+# ROUTES — Google Drive sync status
+# ================================================================
+
+@app.route("/api/sync-status", methods=["GET"])
+def get_sync_status():
+    return jsonify(drive_sync.get_status())
+
+
+@app.route("/api/sync-retry", methods=["POST"])
+def sync_retry():
+    drive_sync.retry_failed()
+    return jsonify({"ok": True, "message": "Re-queued failed uploads"})
 
 
 # ================================================================
 # ROUTES — Folder browser
 # ================================================================
 
+_DRIVE_LABEL_OVERRIDES: dict[str, str] = {
+    "C": "Lenovo",
+    "D": "Ext HDD",
+}
+
+@app.route("/api/list-drives", methods=["GET"])
+def list_drives():
+    """Return all accessible drive letters with their volume labels."""
+    drives = []
+    for letter in "CDEFGHIJKLMNOPQRSTUVWXYZ":
+        path = f"{letter}:/"
+        if not os.path.exists(path):
+            continue
+        label = ""
+        try:
+            vol_output = os.popen(f"vol {letter}:").read()
+            # vol output: "Volume in drive D is Expansion\n Volume Serial Number is ..."
+            for line in vol_output.splitlines():
+                line = line.strip()
+                if line.lower().startswith("volume in drive"):
+                    parts = line.split(" is ", 1)
+                    if len(parts) == 2:
+                        label = parts[1].strip()
+                    break
+        except Exception:
+            pass
+        # Apply override if defined for this drive letter
+        label = _DRIVE_LABEL_OVERRIDES.get(letter, label)
+        drives.append({"letter": letter, "path": path, "label": label})
+    return jsonify(drives)
+
+
 @app.route("/api/browse-folder", methods=["GET"])
 def browse_folder():
     import os as _os
-    path_str = request.args.get("path", "D:/Scans/Incoming")
+    path_str = request.args.get("path", "C:/")
     # Normalise: replace all backslashes and strip surrounding quotes/whitespace
     path_str = path_str.strip().strip('"\'').replace("\\", "/")
     if not path_str:
-        path_str = "D:/Scans/Incoming"
+        path_str = "C:/"
     # Use os.path for reliable Windows drive-letter path handling
     path_str = _os.path.normpath(path_str).replace("\\", "/")
     try:
@@ -1292,21 +1637,92 @@ def browse_folder():
         if parent and _os.path.normpath(parent) != _os.path.normpath(path_str):
             items.append({"name": "..", "type": "dir",
                           "path": parent.replace("\\", "/"), "ext": ""})
-        for child in sorted(p.iterdir(), key=lambda x: (x.is_file(), x.name.lower())):
+        for child in p.iterdir():
             if child.name.startswith("."):
                 continue
+            try:
+                mtime = child.stat().st_mtime
+            except OSError:
+                mtime = 0
             items.append({
-                "name": child.name,
-                "type": "dir" if child.is_dir() else "file",
-                "path": str(child).replace("\\", "/"),
-                "ext":  child.suffix.lower() if child.is_file() else "",
+                "name":  child.name,
+                "type":  "dir" if child.is_dir() else "file",
+                "path":  str(child).replace("\\", "/"),
+                "ext":   child.suffix.lower() if child.is_file() else "",
+                "mtime": mtime,
             })
+        # Dirs first (alphabetical), files second (newest first)
+        items.sort(key=lambda x: (x["type"] == "file", -x["mtime"] if x["type"] == "file" else 0, x["name"].lower()))
         return jsonify({"path": path_str, "items": items})
     except PermissionError:
         return jsonify({"error": f"Permission denied: {path_str}", "path": path_str, "items": []}), 200
     except Exception as e:
         log_activity(f"browse-folder error ({path_str}): {e}", "warning")
         return jsonify({"error": str(e), "path": path_str, "items": []}), 200
+
+
+# ================================================================
+# ROUTES — PropertyMedia spaces
+# ================================================================
+
+_MEDIA_CATEGORIES = ["General", "Damage", "Before-After", "Ads", "Other"]
+_MEDIA_ROOT = Path("D:/PropertyMedia")
+
+
+def _scan_media_spaces() -> list[dict]:
+    """Return current PropertyMedia structure as a list of property dicts."""
+    result = []
+    if not _MEDIA_ROOT.exists():
+        return result
+    for prop_dir in sorted(_MEDIA_ROOT.iterdir()):
+        if not prop_dir.is_dir() or prop_dir.name.startswith("."):
+            continue
+        spaces = []
+        for space_dir in sorted(prop_dir.iterdir()):
+            if not space_dir.is_dir() or space_dir.name.startswith("."):
+                continue
+            categories = sorted(
+                d.name for d in space_dir.iterdir()
+                if d.is_dir() and not d.name.startswith(".")
+            )
+            spaces.append({"name": space_dir.name, "categories": categories})
+        result.append({"name": prop_dir.name, "spaces": spaces})
+    return result
+
+
+@app.route("/api/property-media-spaces", methods=["GET"])
+def get_property_media_spaces():
+    return jsonify({"properties": _scan_media_spaces()})
+
+
+@app.route("/api/property-media/add-space", methods=["POST"])
+def add_property_media_space():
+    data = request.get_json(force=True) or {}
+    space_name = (data.get("space_name") or "").strip()
+    properties = [p for p in (data.get("properties") or []) if isinstance(p, str)]
+
+    if not space_name:
+        return jsonify({"error": "space_name is required"}), 400
+    if not properties:
+        return jsonify({"error": "At least one property must be selected"}), 400
+    # Prevent path traversal
+    if any(c in space_name for c in ("/", "\\", "..", ":")):
+        return jsonify({"error": "Invalid space name"}), 400
+
+    created, errors = [], []
+    for prop_name in properties:
+        prop_dir = _MEDIA_ROOT / prop_name
+        if not prop_dir.exists() or not prop_dir.is_dir():
+            errors.append(f"Property not found: {prop_name}")
+            continue
+        space_dir = prop_dir / space_name
+        for cat in _MEDIA_CATEGORIES:
+            (space_dir / cat).mkdir(parents=True, exist_ok=True)
+        created.append(prop_name)
+        log_activity(f"PropertyMedia: created space '{space_name}' under '{prop_name}'")
+
+    return jsonify({"ok": True, "created": created, "errors": errors,
+                    "properties": _scan_media_spaces()})
 
 
 # ================================================================
@@ -1368,6 +1784,153 @@ def get_summary_stats():
 
 
 # ================================================================
+# ROUTES — Coverage matrix
+# ================================================================
+
+def _billing_expected_months(billing_freq: str, months: list, acct_docs: list) -> "set | None":
+    """
+    Return the set of year-month strings that are expected billing months for
+    this account given its billing frequency.
+    Returns None for 'random' — meaning no month is ever flagged as missing.
+    """
+    freq = (billing_freq or "").strip().lower()
+    if freq in ("monthly", "weekly", ""):
+        return set(months)
+    if freq == "bi-monthly":
+        return {m for m in months if int(m.split("-")[1]) in (1, 3, 5, 7, 9, 11)}
+    if freq == "quarterly":
+        return {m for m in months if int(m.split("-")[1]) in (1, 4, 7, 10)}
+    if freq == "yearly":
+        # Use the calendar month of the earliest ever-filed doc for this account,
+        # defaulting to January if no history exists.
+        filed_yms = sorted(
+            d.get("year_month", "") for d in acct_docs if d.get("year_month")
+        )
+        first_mo = int(filed_yms[0].split("-")[1]) if filed_yms else 1
+        return {m for m in months if int(m.split("-")[1]) == first_mo}
+    if freq == "random":
+        return None  # no month is ever "missing" — all blanks are optional
+    return set(months)
+
+
+@app.route("/api/coverage-matrix", methods=["GET"])
+def get_coverage_matrix():
+    today = datetime.now().date()
+    try:
+        year = int(request.args.get("year", today.year))
+    except (ValueError, TypeError):
+        year = today.year
+    months = [f"{year}-{mo:02d}" for mo in range(1, 13)]
+
+    # Load active reference rows
+    ref_rows = [
+        r for r in read_csv_as_dicts(str(Path("data/reference_table.csv")))
+        if (r.get("active_status") or "active").strip().lower() == "active"
+    ]
+
+    # Load master log — index by (account_number, year_month) → list of records
+    from collections import defaultdict
+    log_index: dict = defaultdict(list)
+    all_docs_by_acct: dict = defaultdict(list)
+    for rec in get_all_master_records():
+        acct = (rec.get("account_number") or "").strip()
+        ym   = (rec.get("year_month")     or "").strip()
+        if acct:
+            all_docs_by_acct[acct].append(rec)
+            if ym:
+                log_index[(acct, ym)].append(rec)
+
+    today_str = today.isoformat()
+
+    def _doc_cell(acct: str, ym: str) -> dict:
+        """Return cell dict for a month that HAS at least one document."""
+        matches = log_index[(acct, ym)]
+        rec = sorted(matches, key=lambda r: r.get("document_date", ""), reverse=True)[0]
+        status = (rec.get("payment_status") or "unpaid").strip().lower()
+        due    = (rec.get("due_date") or "").strip()
+        is_overdue = bool(due and len(due) == 10 and due < today_str and status in ("unpaid", ""))
+        cell_status = "filed" if status == "paid" else ("overdue" if is_overdue else "attention")
+        return {
+            "status": cell_status,
+            "doc": {
+                "row_index":          rec.get("row_index"),
+                "vendor_name":        rec.get("vendor_name", ""),
+                "amount_due":         rec.get("amount_due", ""),
+                "document_date":      rec.get("document_date", ""),
+                "due_date":           rec.get("due_date", ""),
+                "payment_status":     rec.get("payment_status", ""),
+                "final_storage_path": rec.get("final_storage_path", ""),
+            },
+        }
+
+    property_order = ["1423 Central Ave", "3715 Lincoln Ave", "3047 Sea Marsh Rd", "Business"]
+    rows_out = []
+
+    for ref in ref_rows:
+        acct          = (ref.get("account_number") or "").strip()
+        property_     = (ref.get("property") or "").strip()
+        billing_freq  = (ref.get("billing_frequency") or "").strip()
+        acct_all_docs = all_docs_by_acct.get(acct, [])
+        expected      = _billing_expected_months(billing_freq, months, acct_all_docs)
+
+        cells = {}
+        filed_count    = 0
+        expected_count = 0
+        missing_count  = 0
+
+        for m in months:
+            has_doc = bool(log_index.get((acct, m)))
+            if has_doc:
+                cells[m] = _doc_cell(acct, m)
+                filed_count += 1
+            else:
+                # No document this month — determine display status
+                if expected is None:
+                    # Random frequency: show optional dash, never flagged
+                    cells[m] = {"status": "optional", "doc": None}
+                elif m in expected:
+                    cells[m] = {"status": "missing", "doc": None}
+                    expected_count += 1
+                    missing_count  += 1
+                else:
+                    cells[m] = {"status": "not_expected", "doc": None}
+
+            if expected is not None and m in expected and has_doc:
+                expected_count += 1
+
+        rows_out.append({
+            "vendor_name":      ref.get("vendor_name", ""),
+            "account_number":   acct,
+            "vendor_category":  ref.get("vendor_category", ""),
+            "billing_frequency": billing_freq,
+            "property":         property_,
+            "unit":             ref.get("unit", ""),
+            "cells":            cells,
+            "filed_count":      filed_count,
+            "expected_count":   expected_count,
+            "missing_count":    missing_count,
+        })
+
+    prop_rank = {p: i for i, p in enumerate(property_order)}
+    rows_out.sort(key=lambda r: (prop_rank.get(r["property"], 99), r["vendor_name"].lower()))
+
+    total_expected = sum(r["expected_count"] for r in rows_out)
+    total_filed    = sum(r["filed_count"]    for r in rows_out)
+    total_missing  = sum(r["missing_count"]  for r in rows_out)
+
+    return jsonify({
+        "year":   year,
+        "months": months,
+        "rows":   rows_out,
+        "summary": {
+            "total_expected": total_expected,
+            "total_filed":    total_filed,
+            "total_missing":  total_missing,
+        },
+    })
+
+
+# ================================================================
 # ROUTES — Filing path helper
 # ================================================================
 
@@ -1379,17 +1942,19 @@ def _compute_path_dict(data: dict) -> dict:
     Returns dict with folder, filename, full_path, exists.
     """
     adapted = {
-        "property":              data.get("property", ""),
-        "vendor_category":       data.get("vendor_category", "") or "other",
-        "document_type":         data.get("document_type", ""),
-        "bill_date":             data.get("bill_date", "") or data.get("document_date", ""),
+        "property":               data.get("property", ""),
+        "vendor_category":        data.get("vendor_category", "") or "other",
+        "document_type":          data.get("document_type", ""),
+        "bill_date":              data.get("bill_date", "") or data.get("document_date", ""),
         "vendor_name_normalized": (
             data.get("vendor_name_normalized", "")
             or data.get("vendor_name", "")
         ),
-        "vendor_name_raw":       data.get("vendor_name_raw", ""),
-        "unit":                  data.get("unit", ""),
-        "amount_due":            data.get("amount_due", ""),
+        "vendor_name_raw":        data.get("vendor_name_raw", ""),
+        "vendor_name":            data.get("vendor_name", ""),
+        "unit":                   data.get("unit", ""),
+        "amount_due":             data.get("amount_due", ""),
+        "account_number":         data.get("account_number", ""),
     }
     source_file = data.get("source_file", "document.pdf")
     folder  = build_filing_path(adapted)
@@ -1425,41 +1990,67 @@ def preview_filing_path_endpoint():
 
 def _start_file_watcher():
     """
-    Background thread that watches D:/Scans/Incoming for new PDFs and
-    auto-processes them (OCR → Claude → sidecar → web review).
-    Previously required running main.py separately; now embedded here.
+    Background thread that watches D:/Scans/Incoming for new files.
+    When a new file is detected it is added to the in-memory queue as
+    "pending" so it appears on the dashboard.  No Claude processing is
+    triggered automatically — the user must click Process (or Process All)
+    on the card to start analysis.
     """
     try:
-        from main import handle_scan_job
         from startup.folder_initializer import ensure_required_folders
         from startup.startup_diagnostics import run_startup_diagnostics
         from intake.scan_intake_watcher import ScanIntakeWatcher
-        from modules.reference_matcher import load_reference_table as _load_ref
 
         ensure_required_folders()
         run_startup_diagnostics()
 
+        def _enqueue_pending(job):
+            filename = job.filename
+            path_str = str(job.source_path)
+            with _queue_lock:
+                if filename not in queue:
+                    queue[filename] = {
+                        "id":         filename,
+                        "filename":   filename,
+                        "path":       path_str,
+                        "status":     "pending",
+                        "result":     None,
+                        "validation": None,
+                        "error":      None,
+                        "added":      datetime.now().strftime("%H:%M:%S"),
+                    }
+            log_activity(f"New file detected: {filename}", "info")
+            print(f"[Watcher] New file queued as pending: {filename}")
+
         watcher = ScanIntakeWatcher()
-        watcher.run_forever(
-            lambda job: handle_scan_job(
-                job,
-                lambda: _load_ref("data/reference_table.csv"),
-                on_review=_notify_review,
-            )
-        )
+        watcher.run_forever(_enqueue_pending)
     except Exception as e:
         print(f"[Watcher] Failed to start background watcher: {e}")
 
 
 if __name__ == "__main__":
     initialize_csv_files()
+    from startup.folder_initializer import ensure_required_folders
+    ensure_required_folders()
     log_activity("Scanner MVP started", "info")
 
-    # Start the file-watcher as a background daemon thread so it runs
-    # alongside the Flask server — no need to run main.py separately.
-    _watcher_thread = threading.Thread(target=_start_file_watcher, daemon=True)
-    _watcher_thread.start()
-    print("[Watcher] Background file watcher started (watching D:/Scans/Incoming)")
+    # File-watcher is disabled — files are only queued when the user
+    # explicitly browses to them and clicks "Add To Queue".
+    # _watcher_thread = threading.Thread(target=_start_file_watcher, daemon=True)
+    # _watcher_thread.start()
+    # print("[Watcher] Background file watcher started (watching D:/Scans/Incoming)")
+
+    # Google Drive: start background sync worker + startup sync
+    drive_sync.start_worker()
+    drive_sync.startup_sync()
+
+    # Daily backup: run once per day on first startup of the day
+    if should_run_daily_backup():
+        _backup_thread = threading.Thread(
+            target=do_daily_backup, args=(drive_sync,), daemon=True
+        )
+        _backup_thread.start()
+        print("[Backup] Daily snapshot started")
 
     print("\nRegistered Flask routes:")
     for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):

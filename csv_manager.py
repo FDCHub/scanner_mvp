@@ -24,6 +24,9 @@ import os
 import csv
 import shutil
 from datetime import datetime
+from pathlib import Path
+
+from csv_guard import guarded_write
 
 # === FILE PATHS ===
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
@@ -127,13 +130,15 @@ def initialize_csv_files():
 
 # === BACKUP ===
 
-def backup_csv(file_path: str):
+def backup_csv(file_path: str) -> str | None:
+    """Copy the CSV to BACKUP_DIR and return the backup path (or None if source missing)."""
     if not os.path.exists(file_path):
-        return
-    timestamp       = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename        = os.path.basename(file_path)
-    backup_path     = os.path.join(BACKUP_DIR, f"{filename}.{timestamp}.bak")
+        return None
+    timestamp   = datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename    = os.path.basename(file_path)
+    backup_path = os.path.join(BACKUP_DIR, f"{filename}.{timestamp}.bak")
     shutil.copy(file_path, backup_path)
+    return backup_path
 
 
 # === READ / WRITE ===
@@ -150,19 +155,40 @@ def read_csv_as_dicts(file_path: str) -> list[dict]:
     return rows
 
 
-def write_csv(file_path: str, fieldnames: list, rows: list[dict]):
-    backup_csv(file_path)
-    with open(file_path, mode="w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(rows)
+def write_csv(file_path: str, fieldnames: list, rows: list[dict],
+              _alert_fn=None, allow_shrink: bool = False):
+    backup_path = backup_csv(file_path)
+
+    def _do_write():
+        with open(file_path, mode="w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writeheader()
+            writer.writerows(rows)
+
+    guarded_write(
+        csv_path     = file_path,
+        write_fn     = _do_write,
+        backup_path  = backup_path,
+        alert_fn     = _alert_fn,
+        allow_shrink = allow_shrink,
+    )
 
 
-def append_csv(file_path: str, fieldnames: list, row: dict):
-    backup_csv(file_path)
-    with open(file_path, mode="a", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
-        writer.writerow(row)
+def append_csv(file_path: str, fieldnames: list, row: dict,
+               _alert_fn=None):
+    backup_path = backup_csv(file_path)
+
+    def _do_append():
+        with open(file_path, mode="a", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames, extrasaction="ignore")
+            writer.writerow(row)
+
+    guarded_write(
+        csv_path    = file_path,
+        write_fn    = _do_append,
+        backup_path = backup_path,
+        alert_fn    = _alert_fn,
+    )
 
 
 # === NORMALIZATION ===
@@ -237,12 +263,27 @@ def check_for_duplicate(record: dict) -> tuple[bool, str, dict]:
     Check a new record against the full master log.
     Returns (is_duplicate, reason, matching_existing_row).
     Call this BEFORE filing so the dashboard can warn the user.
+
+    Checks in priority order:
+      1. source_file match — same physical scan, block immediately.
+      2. Field-based match — vendor + account + date + amount.
     """
     rows = read_csv_as_dicts(MASTER_LOG_CSV)
+
+    # 1. Source-file check: same filename = same physical document
+    source_file = normalize_key(record.get("source_file", ""))
+    if source_file:
+        for existing_row in rows:
+            if normalize_key(existing_row.get("source_file", "")) == source_file:
+                reason = f"source_file:'{record.get('source_file')}'"
+                return True, reason, existing_row
+
+    # 2. Field-based duplicate check
     for existing_row in rows:
         is_dup, reason = is_master_log_duplicate(existing_row, record)
         if is_dup:
             return True, reason, existing_row
+
     return False, "", {}
 
 
@@ -322,7 +363,7 @@ def build_reference_row(record: dict) -> dict:
         "document_subfolder":     normalize_value(record.get("vendor_category")),
         "account_role":           "",
         "utility_type":           "",
-        "billing_frequency":      "",
+        "billing_frequency":      normalize_value(record.get("billing_frequency")),
         "active_status":          "active",
         "notes":                  "",
         "last_updated":           datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -446,9 +487,52 @@ def delete_record_by_index(index: int) -> tuple[bool, str]:
     vendor       = rows[index].get("vendor_name", "?")
     date         = rows[index].get("document_date", "?")
     del rows[index]
-    write_csv(MASTER_LOG_CSV, MASTER_LOG_FIELDS, rows)
+    write_csv(MASTER_LOG_CSV, MASTER_LOG_FIELDS, rows, allow_shrink=True)
     print(f"  [CSV] Record deleted at index {index}: {vendor} | {date}")
     return True, deleted_path
+
+
+def delete_reference_if_orphaned(vendor_name: str, account_number: str) -> bool:
+    """
+    Remove the reference-table entry for a vendor+account combination only if
+    no master-log records still reference it.
+
+    Called after deleting a master-log record so the reference table stays in
+    sync without losing entries that are still in use.
+
+    Returns True if the reference entry was removed, False otherwise.
+    """
+    v_norm = normalize_key(vendor_name)
+    a_norm = normalize_key(account_number)
+
+    if not v_norm:
+        return False
+
+    # Keep the reference entry if any master-log records still use it
+    master_rows = read_csv_as_dicts(MASTER_LOG_CSV)
+    still_used = any(
+        normalize_key(r.get("vendor_name", "")) == v_norm and
+        normalize_key(r.get("account_number", "")) == a_norm
+        for r in master_rows
+    )
+    if still_used:
+        return False
+
+    # No remaining master-log records → remove the reference entry
+    ref_rows = read_csv_as_dicts(REFERENCE_CSV)
+    before   = len(ref_rows)
+    kept     = [
+        r for r in ref_rows
+        if not (
+            normalize_key(r.get("vendor_name", "")) == v_norm and
+            normalize_key(r.get("account_number", "")) == a_norm
+        )
+    ]
+    if len(kept) < before:
+        write_csv(REFERENCE_CSV, REFERENCE_FIELDS, kept, allow_shrink=True)
+        print(f"  [CSV] Orphaned reference removed: {vendor_name} / {account_number or '(no acct)'}")
+        return True
+    return False
 
 
 def append_document_master_record(record: dict) -> tuple[bool, str, dict]:

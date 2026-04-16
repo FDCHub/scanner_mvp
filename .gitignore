@@ -38,3 +38,7 @@ reference_table.csv
 .env
 
 *.env
+
+# Google Drive credentials — never commit these
+google_credentials.json
+google_token.json

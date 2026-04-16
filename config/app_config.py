@@ -3,15 +3,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, List
 
+_STANDARD_ARCHIVE_CATEGORIES: List[str] = [
+    "Utilities", "Financial", "Insurance", "Maintenance",
+    "Repairs", "Permits", "Licenses", "Handyman", "NeedsReview",
+]
+
+
 @dataclass(frozen=True)
 class PropertyRecord:
     code: str
     name: str
     city: str
     state: str
-    archive_categories: List[str] = field(default_factory=lambda: [
-        "Financial", "Insurance", "Permits", "Licenses"
-    ])
+    archive_categories: List[str] = field(
+        default_factory=lambda: list(_STANDARD_ARCHIVE_CATEGORIES)
+    )
 
 class AppConfig:
     PROJECT_NAME = "scanner_mvp"
@@ -19,6 +25,7 @@ class AppConfig:
     WORKING_FOLDER = Path(r"D:\Scans\Working")
     PROCESSED_FOLDER = Path(r"D:\Scans\Processed")
     ERROR_FOLDER = Path(r"D:\Scans\Error")
+    DELETED_FOLDER = Path(r"D:\Scans\Deleted")
     ARCHIVE_ROOT = Path(r"D:\PropertyDocs")
 
     ACCEPTED_EXTENSIONS = {".pdf"}
@@ -27,13 +34,10 @@ class AppConfig:
     POLL_INTERVAL_SECONDS = 2
 
     PROPERTIES: Dict[str, PropertyRecord] = {
-        "central": PropertyRecord("central", "1423 Central Ave", "Oakland", "CA"),
-        "lincoln": PropertyRecord("lincoln", "3715 Lincoln Ave", "Oakland", "CA"),
-        "seamarsh": PropertyRecord("seamarsh", "3047 Sea Marsh", "Fernandina Beach", "FL"),
-        "business": PropertyRecord(
-            "business", "Business", "N/A", "N/A",
-            ["Financial", "Legal", "Licenses", "Taxes"]
-        ),
+        "central":  PropertyRecord("central",  "1423 Central Ave", "Oakland",          "CA"),
+        "lincoln":  PropertyRecord("lincoln",  "3715 Lincoln Ave", "Oakland",          "CA"),
+        "seamarsh": PropertyRecord("seamarsh", "3047 Sea Marsh Rd","Fernandina Beach", "FL"),
+        "business": PropertyRecord("business", "Business",         "N/A",              "N/A"),
     }
 
     @classmethod
@@ -43,5 +47,6 @@ class AppConfig:
             cls.WORKING_FOLDER,
             cls.PROCESSED_FOLDER,
             cls.ERROR_FOLDER,
+            cls.DELETED_FOLDER,
             cls.ARCHIVE_ROOT,
         ]

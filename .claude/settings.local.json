@@ -17,7 +17,9 @@
       "Bash(netstat -ano)",
       "Bash(tasklist /FI \"PID eq 32164\")",
       "Bash(tasklist /FI \"PID eq 11012\")",
-      "Bash(powershell:*)"
+      "Bash(powershell:*)",
+      "Bash(git config:*)",
+      "Bash(pip install:*)"
     ]
   }
 }

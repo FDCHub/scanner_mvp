@@ -17,6 +17,18 @@
   .pill.warn { background: #b45309; color: #fff; }
   .pill.err  { background: #991b1b; color: #fff; }
 
+  /* ── Drive sync indicator ─────────────────────────────────── */
+  .sync-indicator { display:flex; align-items:center; gap:6px; font-size:12px; color:#ccc; cursor:default; }
+  .sync-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .sync-dot.synced      { background:#22c55e; }
+  .sync-dot.syncing     { background:#facc15; animation:syncPulse 1s infinite; }
+  .sync-dot.failed      { background:#ef4444; }
+  .sync-dot.offline     { background:#6b7280; }
+  .sync-dot.unconfigured{ background:#374151; }
+  .sync-retry-btn { font-size:11px; color:#93c5fd; background:none; border:none; cursor:pointer; text-decoration:underline; padding:0; }
+  .sync-retry-btn:hover { color:#bfdbfe; }
+  @keyframes syncPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
   /* ── Summary stats bar ────────────────────────────────────── */
   .stats-bar { background: #fff; border-bottom: 1px solid #e5e5e0; padding: 10px 24px; display: flex; gap: 24px; align-items: center; }
   .stat-item { display: flex; align-items: center; gap: 10px; }
@@ -33,9 +45,48 @@
   .card { background: #fff; border: 1px solid #e5e5e0; border-radius: 10px; padding: 16px; }
   .card-title { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: #888; margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
 
-  /* ── Add Documents — two-panel ────────────────────────────── */
-  .add-docs-panels { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-  .panel-label { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  /* ── Embedded coverage matrix ─────────────────────────── */
+  .cov-table th { padding: 3px 7px; font-size: 10px; font-weight: 600; color: #555; background: #f0f0e8;
+                  border: 1px solid #e5e5e0; white-space: nowrap; text-align: right; }
+  .cov-table th.cov-lbl { text-align: left; }
+  .cov-table th.cov-ytd { background: #e8f0e8; }
+  .cov-table td { padding: 3px 7px; border: 1px solid #e5e5e0; vertical-align: middle; }
+  .cov-table tr:hover td { background: #f8f8f6; }
+  .cov-group td { background: #e8eef5; font-size: 10px; font-weight: 700; color: #334; text-transform: uppercase; letter-spacing: 0.05em; }
+  .cov-sub   td { background: #f5f5f0; font-size: 10px; font-weight: 600; border-top: 2px solid #d0d0c8; }
+  .cov-grand td { background: #d0d0d0; color: #1a1a1a; font-size: 11px; font-weight: 700; border-top: 2px solid #b0b0b0; }
+  .cov-amt  { text-align: right; white-space: nowrap; cursor: pointer; }
+  .cov-amt:hover { background: #e8f5ee !important; }
+  .cov-miss { text-align: right; color: #ccc; font-size: 10px; }
+  .cov-no-bill { text-align: right; color: #aaa; font-size: 11px; background: #f0f0ec; }
+  /* ── New scan badge ────────────────────────────────────────── */
+  .new-scan-badge { display:none; margin-left:8px; padding:2px 8px; background:#1a7a4a; color:#fff; border-radius:10px; font-size:11px; font-weight:600; animation:badgePulse 1.2s infinite; }
+  .new-scan-badge.visible { display:inline-block; }
+  @keyframes badgePulse { 0%,100%{opacity:1} 50%{opacity:.55} }
+  .cov-ytd-cell { text-align: right; font-weight: 600; background: #f5f8f5; }
+  .cov-grand .cov-ytd-cell { background: #c8d0c8; }
+  /* action popup (shared with coverage page popup) */
+  .act-popup { display: none; position: fixed; background: #fff; border: 1px solid #d0d0c8;
+               border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,.16); padding: 10px 12px;
+               z-index: 2000; min-width: 170px; }
+  .act-popup.open { display: block; }
+  .act-popup-title { font-size: 11px; color: #888; margin-bottom: 8px; white-space: nowrap;
+                     overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  .act-btn { display: block; width: 100%; text-align: left; padding: 6px 10px; margin-bottom: 4px;
+             border: 1px solid #d0d0c8; border-radius: 5px; background: #f8f8f6; font-size: 12px;
+             font-weight: 500; cursor: pointer; color: #1a1a1a; }
+  .act-btn:hover { background: #e8f5ee; border-color: #1a7a4a; color: #1a7a4a; }
+  .act-btn:last-child { margin-bottom: 0; }
+  .act-btn.disabled { color: #aaa; cursor: default; }
+  .act-btn.disabled:hover { background: #f8f8f6; border-color: #d0d0c8; color: #aaa; }
+
+  /* ── Add Documents — tabbed ─────────────────────────────── */
+  .add-tab-bar { display: flex; gap: 0; margin-bottom: 10px; border-bottom: 2px solid #e5e5e0; }
+  .add-tab { padding: 6px 16px; font-size: 12px; font-weight: 600; color: #888; cursor: pointer; border: none; background: none; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: color 0.12s; letter-spacing: 0.03em; }
+  .add-tab:hover { color: #1a1a1a; }
+  .add-tab.active { color: #1a7a4a; border-bottom-color: #1a7a4a; }
+  .add-tab-pane { display: none; flex-direction: column; gap: 6px; }
+  .add-tab-pane.active { display: flex; }
 
   /* ── Drop zone ────────────────────────────────────────────── */
   .drop-zone { border: 2px dashed #d0d0c8; border-radius: 8px; padding: 28px 16px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; color: #888; height: 158px; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -44,7 +95,6 @@
   .drop-zone input { display: none; }
 
   /* ── File browser ─────────────────────────────────────────── */
-  .file-browser-wrap { display: flex; flex-direction: column; gap: 4px; }
   .file-browser { border: 1px solid #d0d0c8; border-radius: 8px; height: 158px; overflow-y: auto; background: #fafaf8; display: flex; flex-direction: column; }
   .browser-path-bar { font-size: 10px; color: #555; padding: 4px 8px; background: #f0f0e8; border-bottom: 1px solid #e5e5e0; border-radius: 8px 8px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
   .browser-list { flex: 1; overflow-y: auto; padding: 2px 0; }
@@ -70,10 +120,21 @@
   .btn.sm { padding: 4px 10px; font-size: 12px; }
   .btn:disabled { opacity: 0.45; cursor: not-allowed; }
 
-  /* ── Queue items ─────────────────────────────────────────── */
-  .queue-item { padding: 8px 10px; border: 1px solid #e5e5e0; border-radius: 6px; margin-bottom: 6px; background: #fafaf8; }
-  .queue-item-header { display: flex; align-items: center; gap: 10px; }
-  .queue-item .name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  /* ── Queue cards ─────────────────────────────────────────── */
+  .q-cards-wrap { display:flex; flex-wrap:wrap; gap:8px; }
+  .q-card { width:188px; border:1px solid #e5e5e0; border-radius:8px; padding:10px; background:#fafaf8; display:flex; flex-direction:column; gap:5px; }
+  .q-card.processing { border-color:#93c5fd; background:#eff6ff; }
+  .q-card.error-card { border-color:#fca5a5; background:#fef2f2; }
+  .q-card-name { font-size:12px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .q-card-meta { font-size:11px; color:#888; }
+  .q-card-actions { display:flex; gap:4px; margin-top:auto; padding-top:4px; }
+  .q-card-actions .btn { flex:1; font-size:11px; padding:3px 6px; text-align:center; }
+  .q-fmt-badge { padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; background:#e5e5e0; color:#555; flex-shrink:0; }
+  .q-fmt-badge.pdf  { background:#fee2e2; color:#991b1b; }
+  .q-fmt-badge.jpg  { background:#dbeafe; color:#1d4ed8; }
+  .q-fmt-badge.jpeg { background:#dbeafe; color:#1d4ed8; }
+  .q-fmt-badge.png  { background:#d1fae5; color:#065f46; }
+  .q-fmt-badge.heic { background:#f3e8ff; color:#6b21a8; }
   .badge { padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; }
   .badge.pending    { background: #e5e5e0; color: #555; }
   .badge.processing { background: #dbeafe; color: #1d4ed8; }
@@ -148,11 +209,11 @@
   /* ── Modal ───────────────────────────────────────────────── */
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
   .modal-backdrop.open { display: flex; }
-  .modal { background: #fff; border-radius: 12px; width: 580px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
-  .modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e5e0; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; background: #fff; z-index: 5; }
+  .modal { background: #fff; border-radius: 12px; width: 580px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  .modal-header { padding: 16px 20px; border-bottom: 1px solid #e5e5e0; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; background: #fff; }
   .modal-header h2 { font-size: 15px; font-weight: 500; }
-  .modal-body { padding: 20px; }
-  .modal-footer { padding: 12px 20px; border-top: 1px solid #e5e5e0; display: flex; gap: 8px; justify-content: flex-end; position: sticky; bottom: 0; background: #fff; }
+  .modal-body { padding: 20px; flex: 1; overflow-y: auto; }
+  .modal-footer { padding: 12px 20px; border-top: 1px solid #e5e5e0; display: flex; gap: 8px; justify-content: flex-end; flex-shrink: 0; background: #fff; }
   .close-btn { background: none; border: none; cursor: pointer; font-size: 18px; color: #888; line-height: 1; }
 
   /* ── Modal form fields ───────────────────────────────────── */
@@ -205,20 +266,47 @@
   .path-box { border-radius: 6px; padding: 10px 12px; font-size: 11px; font-family: 'Consolas', 'Monaco', monospace; word-break: break-all; margin-bottom: 8px; line-height: 1.5; }
   .path-box.from { background: #fff5f5; border: 1px solid #fca5a5; color: #7f1d1d; }
   .path-box.to   { background: #f0faf4; border: 1px solid #6ee7b7; color: #065f46; }
+
+  /* ── Processing Pipeline panel ──────────────────────────── */
+  #pipeline-panel { transition: opacity 0.3s; }
+  .pipeline-track { position: absolute; top: 9px; left: 10%; right: 10%; height: 2px; background: #e5e5e0; z-index: 0; }
+  .pipeline-stage { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; }
+  .ps-dot { width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid #d0d0c8; background: #fff; flex-shrink: 0; transition: background 0.3s, border-color 0.3s; }
+  .ps-dot.ps-done   { background: #1a7a4a; border-color: #1a7a4a; }
+  .ps-dot.ps-active { border-color: #1a7a4a; background: conic-gradient(#1a7a4a 50%, #fff 50%); animation: psDotPulse 1s ease-in-out infinite; }
+  .ps-dot.ps-pending { background: #fff; border-color: #d0d0c8; }
+  .ps-label { font-size: 10px; color: #888; text-align: center; line-height: 1.35; letter-spacing: 0.01em; }
+  .pipeline-bar-wrap { height: 10px; background: #e5e5e0; border-radius: 5px; overflow: hidden; margin-top: 10px; }
+  .pipeline-bar-fill { height: 100%; background: linear-gradient(90deg, #1a7a4a, #22c55e); border-radius: 5px; transition: width 0.5s ease; width: 0%; }
+  @keyframes psDotPulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
 </style>
 </head>
 <body>
 
 <!-- ── Header ─────────────────────────────────────────────── -->
 <div class="header">
-  <h1>Scanner MVP</h1>
+  <h1>SCANNER MVP</h1>
   <div style="display:flex;align-items:center;gap:16px;">
-    <span id="folder-path" style="font-size:12px;color:#888;"></span>
-    <div class="status-pills">
-      <span id="pill-pending" class="pill ok">0 pending</span>
-      <span id="pill-review"  class="pill warn" style="display:none">0 to review</span>
-      <span id="pill-errors"  class="pill err"  style="display:none">0 errors</span>
-      <span id="pill-api"     class="pill ok">API ✓</span>
+    <!-- Incoming Folder indicator -->
+    <div class="sync-indicator" id="incoming-indicator" title="D:/Scans/Incoming folder status">
+      <span class="sync-dot offline" id="incoming-dot"></span>
+      <span id="incoming-label">Incoming</span>
+    </div>
+    <!-- Share Drive sync indicator -->
+    <div class="sync-indicator" id="sync-indicator" title="Google Drive sync status">
+      <span class="sync-dot unconfigured" id="sync-dot"></span>
+      <span id="sync-label">Share Drive</span>
+      <button class="sync-retry-btn" id="sync-retry-btn" style="display:none" onclick="retrySyncUploads()">Retry</button>
+    </div>
+    <!-- Synced indicator -->
+    <div class="sync-indicator" id="cloudlocal-indicator" title="Combined cloud and local sync status">
+      <span class="sync-dot offline" id="cloudlocal-dot"></span>
+      <span id="cloudlocal-label">Synced</span>
+    </div>
+    <!-- Claude API indicator -->
+    <div class="sync-indicator" id="api-indicator" title="Claude API status">
+      <span class="sync-dot offline" id="api-dot"></span>
+      <span id="api-label">Claude API</span>
     </div>
   </div>
 </div>
@@ -266,57 +354,120 @@
   <!-- ── Left column ──────────────────────────────────────── -->
   <div>
 
-    <!-- Add Documents — two-panel -->
-    <div class="card" style="margin-bottom:16px;">
-      <div class="card-title">Add documents</div>
-      <div class="add-docs-panels">
-
-        <!-- Left: drag & drop -->
-        <div>
-          <div class="panel-label">Upload files</div>
-          <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            <p>Drag &amp; drop or click to browse</p>
-            <p style="font-size:11px;margin-top:4px;">PDF, JPG, PNG</p>
-            <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png" onchange="handleFileSelect(this.files)">
-          </div>
-        </div>
-
-        <!-- Right: file browser -->
-        <div class="file-browser-wrap">
-          <div class="panel-label">Browse folder</div>
-          <div class="file-browser" id="file-browser">
-            <div class="browser-path-bar" id="browser-path-bar">D:/Scans/Incoming</div>
-            <div class="browser-list" id="browser-list">
-              <div class="empty" style="padding:14px 0;font-size:12px;">Loading…</div>
-            </div>
-          </div>
-          <div class="browser-footer">
-            <span class="browser-sel-count" id="browser-sel-count">0 selected</span>
-            <button class="btn sm green" id="browser-add-btn" onclick="addBrowserFiles()" disabled>Add To Queue</button>
-          </div>
-        </div>
-
-      </div>
-    </div>
-
-    <!-- Incoming Queue -->
+    <!-- Add Documents — tabbed -->
     <div class="card" style="margin-bottom:16px;">
       <div class="card-title">
-        Incoming queue
+        Add documents
+        <span style="display:flex;align-items:center;gap:8px;">
+          <span class="new-scan-badge" id="new-scan-badge">🔔 New scan ready!</span>
+          <button class="btn sm" onclick="openSpacesModal()" style="font-size:11px;font-weight:500;letter-spacing:0;">⚙ Manage Spaces</button>
+        </span>
+      </div>
+
+      <div class="add-tab-bar">
+        <button class="add-tab" id="tab-btn-dragdrop" onclick="switchAddTab('dragdrop')">Drag &amp; Drop</button>
+        <button class="add-tab active" id="tab-btn-browse" onclick="switchAddTab('browse')">Browse Files</button>
+      </div>
+
+      <!-- Tab 1: Drag & Drop -->
+      <div class="add-tab-pane" id="tab-dragdrop">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p>Drag &amp; drop or click to browse</p>
+          <p style="font-size:11px;margin-top:4px;">PDF, JPG, PNG, HEIC</p>
+          <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.heic" onchange="handleFileSelect(this.files)">
+        </div>
+        <div style="display:flex;justify-content:flex-end;">
+          <button class="btn sm green" onclick="document.getElementById('file-input').click()">Add To Queue</button>
+        </div>
+      </div>
+
+      <!-- Tab 2: Browse Files -->
+      <div class="add-tab-pane active" id="tab-browse">
+        <div style="display:flex;gap:4px;flex-wrap:wrap;">
+          <button class="btn sm" onclick="loadBrowserFolder('D:/Scans/Incoming')"         title="Incoming Scans">📥 Incoming Scans</button>
+          <span id="drive-buttons"></span>
+          <button class="btn sm" onclick="loadBrowserFolder('C:/Users/frase/Downloads')"  title="Downloads">⬇ Downloads</button>
+          <button class="btn sm" onclick="loadBrowserFolder('D:/PropertyMedia')"          title="Property Media">🏠 Property Media</button>
+          <button class="btn sm" onclick="loadDesktop()"                                  title="Desktop">🖥 Desktop</button>
+        </div>
+        <div class="file-browser" id="file-browser">
+          <div class="browser-path-bar" id="browser-path-bar">D:/Scans/Incoming</div>
+          <div class="browser-list" id="browser-list">
+            <div class="empty" style="padding:14px 0;font-size:12px;">Loading…</div>
+          </div>
+        </div>
+        <div class="browser-footer">
+          <span class="browser-sel-count" id="browser-sel-count">0 selected</span>
+          <button class="btn sm green" id="browser-add-btn" onclick="addBrowserFiles()" disabled>Add To Queue</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Processing Queue -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">
+        Processing queue
         <span id="queue-count" style="font-weight:400;color:#bbb;">0 files</span>
       </div>
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-        <button class="btn green" id="process-btn" onclick="processAll()" style="flex:1;">▶ Process All Docs</button>
         <button class="btn sm" onclick="refreshQueue()">↻ Refresh</button>
+        <button class="btn sm green" id="process-btn" onclick="processAll()">▶ Process All Files</button>
       </div>
       <div class="progress-wrap" id="progress-wrap">
         <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
         <div class="progress-label" id="progress-label">Processing…</div>
       </div>
       <div id="queue-list">
-        <div class="empty">No files in queue — drop files above or wait for scanner</div>
+        <div class="empty">No files in queue — add files using Browse Files above</div>
       </div>
+    </div>
+
+    <!-- Processing Pipeline (hidden when idle) -->
+    <div class="card" id="pipeline-panel" style="margin-bottom:16px;display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-size:12px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase;color:#888;">Processing Pipeline</span>
+        <div style="display:flex;align-items:center;gap:14px;">
+          <span id="pipeline-queue-label" style="font-size:12px;color:#aaa;"></span>
+          <span id="pipeline-timer" style="font-size:12px;font-weight:600;font-family:monospace;color:#555;min-width:44px;text-align:right;"></span>
+        </div>
+      </div>
+      <div id="pipeline-filename" style="font-size:13px;font-weight:500;color:#1a1a1a;margin-bottom:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
+      <!-- Five stage dots connected by a line -->
+      <div style="position:relative;padding-bottom:4px;">
+        <div class="pipeline-track"></div>
+        <div style="display:flex;justify-content:space-between;position:relative;z-index:1;">
+          <div class="pipeline-stage">
+            <div class="ps-dot ps-pending" id="ps-dot-0"></div>
+            <div class="ps-label">Reference<br>Check</div>
+          </div>
+          <div class="pipeline-stage">
+            <div class="ps-dot ps-pending" id="ps-dot-1"></div>
+            <div class="ps-label">Claude<br>Analysis</div>
+          </div>
+          <div class="pipeline-stage">
+            <div class="ps-dot ps-pending" id="ps-dot-2"></div>
+            <div class="ps-label">Confidence</div>
+          </div>
+          <div class="pipeline-stage">
+            <div class="ps-dot ps-pending" id="ps-dot-3"></div>
+            <div class="ps-label">Validation</div>
+          </div>
+          <div class="pipeline-stage">
+            <div class="ps-dot ps-pending" id="ps-dot-4"></div>
+            <div class="ps-label">Review</div>
+          </div>
+        </div>
+      </div>
+      <!-- Progress bar -->
+      <div class="pipeline-bar-wrap">
+        <div class="pipeline-bar-fill" id="pipeline-bar-fill"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:3px;">
+        <span id="pipeline-pct-label" style="font-size:11px;color:#888;font-weight:600;font-family:monospace;">0%</span>
+      </div>
+      <div id="pipeline-done-msg" style="display:none;text-align:center;font-size:13px;font-weight:600;color:#1a7a4a;padding:6px 0 2px;">✓ Ready for review!</div>
     </div>
 
     <!-- Review Queue -->
@@ -369,6 +520,28 @@
       </div>
     </div>
 
+    <!-- Coverage Matrix (embedded) -->
+    <div class="card" style="margin-top:16px;">
+      <div class="card-title">
+        Coverage Matrix
+        <span style="display:flex;align-items:center;gap:10px;">
+          <span style="display:flex;align-items:center;gap:6px;">
+            <button class="btn sm" onclick="covChangeYear(-1)" style="padding:2px 7px;font-size:12px;">&#8592;</button>
+            <span id="cov-year-label" style="font-size:13px;font-weight:700;min-width:38px;text-align:center;"></span>
+            <button class="btn sm" onclick="covChangeYear(1)"  style="padding:2px 7px;font-size:12px;">&#8594;</button>
+          </span>
+          <a href="/coverage" style="font-size:11px;color:#1a7a4a;text-decoration:none;font-weight:400;letter-spacing:normal;text-transform:none;">Full view →</a>
+        </span>
+      </div>
+      <div style="overflow-x:auto;">
+        <div id="cov-loading" style="padding:16px 0;color:#aaa;font-size:12px;text-align:center;">Loading…</div>
+        <table id="cov-matrix" class="cov-table" style="display:none;border-collapse:collapse;width:100%;font-size:11px;">
+          <thead id="cov-head"></thead>
+          <tbody id="cov-body"></tbody>
+        </table>
+      </div>
+    </div>
+
   </div>
 
   <!-- ── Right column ─────────────────────────────────────── -->
@@ -386,8 +559,11 @@
 <div class="modal-backdrop" id="review-modal">
   <div class="modal">
     <div class="modal-header">
-      <h2>Review extracted data</h2>
-      <button class="close-btn" onclick="closeModal()">×</button>
+      <h2>Review & File</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn sm" id="view-scan-btn" onclick="openViewScan()" title="Open original scan in new tab">👁 View Scan</button>
+        <button class="close-btn" onclick="closeModal()">×</button>
+      </div>
     </div>
     <div class="modal-body">
       <div class="conf-legend">
@@ -465,6 +641,14 @@
   // Recent documents — full unfiltered data
   let recentRows = [];
 
+  // Processing pipeline state
+  let _pipelineTimerID = null;
+  let _pipelineStart   = null;
+  let _pipelineActive  = false;
+
+  // Filenames currently in queue (updated by refreshQueue — used to hide queued files in browser)
+  let _queuedFilenames = new Set();
+
   // ── Startup ──────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => {
     ensureCanonicalValues();
@@ -474,12 +658,21 @@
     refreshRecent();
     refreshStats();
     loadBrowserFolder('D:/Scans/Incoming');
+    refreshSyncStatus();
+    checkIncomingFolder();
+    fetchDrives();
     pollInterval = setInterval(() => {
       refreshStatus();
       refreshQueue();
       refreshActivity();
       refreshStats();
     }, 4000);
+    // Drive sync status polls less frequently (every 15 s)
+    setInterval(refreshSyncStatus, 15000);
+    // Incoming folder check polls every 5 s (drives the New Scan badge)
+    setInterval(checkIncomingFolder, 5000);
+    // Drive detection polls every 30 s (handles USB plug/unplug)
+    setInterval(fetchDrives, 30000);
   });
 
 
@@ -499,24 +692,186 @@
     if (oc) oc.textContent = s.overdue_count != null ? s.overdue_count : '0';
   }
 
-  // ── Status ───────────────────────────────────────────────────
+  // ── Shared state for combined Cloud & Local indicator ────────
+  let _lastSyncStatus  = 'unconfigured';
+  let _lastIncomingOk  = false;
+
+  function _updateCloudLocalIndicator() {
+    const dot = document.getElementById('cloudlocal-dot');
+    if (!dot) return;
+    let cls;
+    if (_lastSyncStatus === 'synced' && _lastIncomingOk) {
+      cls = 'synced';          // green — everything ok
+    } else if (_lastSyncStatus === 'failed' || _lastSyncStatus === 'offline' || !_lastIncomingOk) {
+      cls = 'failed';          // red — something is down
+    } else if (_lastSyncStatus === 'syncing') {
+      cls = 'syncing';         // yellow — in progress
+    } else {
+      cls = 'offline';         // gray — unconfigured / unknown
+    }
+    dot.className = 'sync-dot ' + cls;
+  }
+
+  // ── Shared Drive indicator ────────────────────────────────────
+  const _SYNC_CONFIG = {
+    synced      : { dot: 'synced',       },
+    syncing     : { dot: 'syncing',      },
+    failed      : { dot: 'failed',       },
+    offline     : { dot: 'offline',      },
+    unconfigured: { dot: 'unconfigured', },
+  };
+
+  async function refreshSyncStatus() {
+    const s = await fetch('/api/sync-status').then(r => r.json()).catch(() => null);
+    if (!s) return;
+    _lastSyncStatus = s.status;
+    const cfg      = _SYNC_CONFIG[s.status] || _SYNC_CONFIG.unconfigured;
+    const dot      = document.getElementById('sync-dot');
+    const label    = document.getElementById('sync-label');
+    const retryBtn = document.getElementById('sync-retry-btn');
+    if (!dot) return;
+
+    dot.className = 'sync-dot ' + cfg.dot;
+    let labelText = 'Share Drive';
+    if (s.pending_count > 0) labelText += ` (${s.pending_count})`;
+    label.textContent = labelText;
+
+    // Show retry button only when there are failed/offline pending items
+    retryBtn.style.display = (s.pending_count > 0 && ['failed','offline'].includes(s.status))
+      ? '' : 'none';
+
+    // Tooltip: show last error if any
+    const indicator = document.getElementById('sync-indicator');
+    indicator.title = s.last_error
+      ? `Google Drive sync — last error: ${s.last_error}`
+      : 'Google Drive sync status';
+
+    _updateCloudLocalIndicator();
+  }
+
+  async function retrySyncUploads() {
+    await fetch('/api/sync-retry', {method:'POST'}).catch(() => null);
+    refreshSyncStatus();
+  }
+
+  // ── New scan badge ────────────────────────────────────────────
+  function _updateNewScanBadge(incomingFiles, folderData) {
+    // Show badge if any PDF in Incoming has not yet been added to the queue
+    const hasUnqueued = incomingFiles.some(name => !_queuedFilenames.has(name));
+    document.getElementById('new-scan-badge').classList.toggle('visible', hasUnqueued);
+    // Auto-refresh Browse Files if it is currently showing D:/Scans/Incoming
+    if (hasUnqueued && folderData) {
+      const pathBar = document.getElementById('browser-path-bar');
+      if (pathBar && pathBar.textContent.trim() === 'D:/Scans/Incoming') {
+        renderBrowser(folderData, 'D:/Scans/Incoming');
+      }
+    }
+  }
+
+  function hideNewScanBadge() {
+    document.getElementById('new-scan-badge').classList.remove('visible');
+  }
+
+  // ── Status (Claude API dot only) ─────────────────────────────
   async function refreshStatus() {
     const r = await fetch('/api/status').then(r => r.json()).catch(() => null);
     if (!r) return;
-    document.getElementById('folder-path').textContent = r.incoming_folder;
-    document.getElementById('pill-pending').textContent = r.pending + ' pending';
-    const reviewPill = document.getElementById('pill-review');
-    reviewPill.textContent = r.review + ' to review';
-    reviewPill.style.display = r.review > 0 ? '' : 'none';
-    const errPill = document.getElementById('pill-errors');
-    errPill.textContent = r.errors + ' errors';
-    errPill.style.display = r.errors > 0 ? '' : 'none';
-    document.getElementById('pill-api').textContent = r.api_key_loaded ? 'API ✓' : 'API ✗';
-    document.getElementById('pill-api').className = 'pill ' + (r.api_key_loaded ? 'ok' : 'err');
+    const apiDot   = document.getElementById('api-dot');
+    const apiLabel = document.getElementById('api-label');
+    if (apiDot) {
+      apiDot.className     = 'sync-dot ' + (r.api_key_loaded ? 'synced' : 'failed');
+      apiLabel.textContent = 'Claude API';
+    }
+  }
+
+  // ── Incoming Folder indicator + badge check ──────────────────
+  async function checkIncomingFolder() {
+    const dot  = document.getElementById('incoming-dot');
+    if (!dot) return;
+    const data = await fetch('/api/browse-folder?path=D:/Scans/Incoming').then(r => r.json()).catch(() => null);
+    const ok   = data && !data.error;
+    _lastIncomingOk   = ok;
+    dot.className     = 'sync-dot ' + (ok ? 'synced' : 'failed');
+    _updateCloudLocalIndicator();
+    if (ok && data.items) {
+      const pdfNames = data.items
+        .filter(i => i.type === 'file' && (i.ext || '').toLowerCase() === '.pdf')
+        .map(i => i.name);
+      _updateNewScanBadge(pdfNames, data);
+    }
   }
 
   // ── File browser ─────────────────────────────────────────────
+  const _MY_COMPUTER = '__MY_COMPUTER__';
+  let _drives = [];  // populated by fetchDrives(), used by renderMyComputer()
+
+  // Returns true if path is a drive root (e.g. "C:/" or "C:")
+  function _isDriveRoot(path) {
+    return /^[A-Za-z]:[/\\]?$/.test(path ? path.trim() : '');
+  }
+
+  async function loadDesktop() {
+    loadBrowserFolder('C:/Users/frase/OneDrive/Desktop');
+  }
+
+  // Fetch available drives and rebuild the drive-buttons strip.
+  // Polls every 30s so hot-plugged drives appear / disappear automatically.
+  // E: always renders — as a ghost placeholder when absent, solid when present.
+  async function fetchDrives() {
+    let drives;
+    try {
+      const resp = await fetch('/api/list-drives');
+      if (!resp.ok) return;
+      drives = await resp.json();
+    } catch { return; }
+
+    // Check if the drive set changed before touching the DOM
+    const newKey = drives.map(d => d.letter).join(',');
+    if (newKey === _drives.map(d => d.letter).join(',')) return;
+    _drives = drives;
+
+    const container = document.getElementById('drive-buttons');
+    if (!container) return;
+    container.innerHTML = '';
+
+    // Collect detected letters for quick lookup
+    const detected = new Set(drives.map(d => d.letter));
+
+    // Render all detected drives in order
+    drives.forEach(d => {
+      const label = d.label ? `${d.letter}: ${d.label}` : `${d.letter}:`;
+      const btn = document.createElement('button');
+      btn.className = 'btn sm';
+      btn.title = `${d.letter}: Drive`;
+      btn.textContent = '💾 ' + label;
+      btn.onclick = () => loadBrowserFolder(d.path);
+      container.appendChild(btn);
+    });
+
+    // Always show E: — ghost when absent, solid when detected (already rendered above)
+    if (!detected.has('E')) {
+      const ghost = document.createElement('button');
+      ghost.className = 'btn sm';
+      ghost.title = 'Insert USB drive to enable';
+      ghost.textContent = '💾 E: USB';
+      ghost.disabled = true;
+      ghost.style.cssText = 'border-style:dashed;opacity:0.45;color:#888;cursor:default;';
+      container.appendChild(ghost);
+    }
+  }
+
+  function switchAddTab(name) {
+    ['dragdrop', 'browse'].forEach(t => {
+      document.getElementById('tab-' + t).classList.toggle('active', t === name);
+      document.getElementById('tab-btn-' + t).classList.toggle('active', t === name);
+    });
+  }
+
   async function loadBrowserFolder(path) {
+    if (path === _MY_COMPUTER) {
+      renderMyComputer();
+      return;
+    }
     document.getElementById('browser-path-bar').textContent = path;
     document.getElementById('browser-list').innerHTML =
       '<div class="empty" style="padding:14px 0;font-size:12px;">Loading…</div>';
@@ -535,6 +890,21 @@
     renderBrowser(data, path);
   }
 
+  function renderMyComputer() {
+    document.getElementById('browser-path-bar').textContent = 'My Computer';
+    const listEl = document.getElementById('browser-list');
+    listEl.innerHTML = '';
+    _drives.forEach(d => {
+      const name = d.label ? `${d.letter}: ${d.label}` : `${d.letter}:`;
+      const div = document.createElement('div');
+      div.className = 'browser-item dir';
+      div.innerHTML = '<span class="browser-icon">💿</span>' +
+                      '<span class="browser-name">' + esc(name) + '</span>';
+      div.addEventListener('click', () => loadBrowserFolder(d.path));
+      listEl.appendChild(div);
+    });
+  }
+
   function renderBrowser(data, requestedPath) {
     const pathBar = document.getElementById('browser-path-bar');
     const listEl  = document.getElementById('browser-list');
@@ -546,7 +916,7 @@
       return;
     }
 
-    const supported = ['.pdf', '.jpg', '.jpeg', '.png'];
+    const supported = ['.pdf', '.jpg', '.jpeg', '.png', '.heic'];
     listEl.innerHTML = '';
 
     if (!data.items || data.items.length === 0) {
@@ -554,16 +924,26 @@
       return;
     }
 
-    data.items.forEach(item => {
+    // Sort: ".." first, then dirs alphabetically, then files by mtime desc
+    const upEntry  = data.items.filter(i => i.name === '..');
+    const dirs     = data.items.filter(i => i.type === 'dir' && i.name !== '..').sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
+    const files    = data.items.filter(i => i.type === 'file').sort((a, b) => (b.mtime || 0) - (a.mtime || 0));
+    const sorted   = [...upEntry, ...dirs, ...files];
+
+    sorted.forEach(item => {
       const div = document.createElement('div');
       if (item.type === 'dir') {
         const isUp = item.name === '..';
+        // At a drive root the .. entry goes to My Computer instead of a real path
+        const upTarget = (isUp && _isDriveRoot(data.path)) ? _MY_COMPUTER : item.path;
         div.className = 'browser-item ' + (isUp ? 'up-dir' : 'dir');
         div.innerHTML = '<span class="browser-icon">' + (isUp ? '⬆' : '📁') + '</span>' +
                         '<span class="browser-name">' + esc(isUp ? 'Up (..)' : item.name) + '</span>';
-        div.addEventListener('click', () => loadBrowserFolder(item.path));
+        div.addEventListener('click', () => loadBrowserFolder(upTarget));
       } else {
         if (!supported.includes(item.ext)) return;
+        // Skip files already in the queue
+        if (_queuedFilenames.has(item.name)) return;
         const isSelected = browserSelectedFiles.has(item.path);
         div.className = 'browser-item file' + (isSelected ? ' selected' : '');
 
@@ -623,15 +1003,37 @@
     }
     browserSelectedFiles.clear();
     updateBrowserSelCount();
+    // Refresh queue first so _queuedFilenames is current, then reload browser
+    // so newly-queued files disappear from the file listing immediately
+    if (added > 0) {
+      await refreshQueue();
+      hideNewScanBadge();  // badge goes away as soon as files are queued
+    }
     const pathBar = document.getElementById('browser-path-bar');
     if (pathBar) loadBrowserFolder(pathBar.textContent);
     if (skipped > 0) alert(skipped + ' file(s) skipped — already processed.');
-    if (added > 0) refreshQueue();
   }
 
   // ── Queue ─────────────────────────────────────────────────────
+  function fmtMtime(ts) {
+    const d = new Date(ts * 1000);
+    return d.toLocaleDateString('en-US', {month:'short', day:'2-digit', year:'numeric'});
+  }
+
+  function buildMiniStageBar(si) {
+    const labels = ['Read','Match','Analyze','Score'];
+    const keys   = ['reading','matching','analyzing','scoring'];
+    return '<div class="stage-bar" style="height:22px;margin:2px 0;">' +
+      keys.map((k, i) => {
+        const cls = (si.done||[]).includes(k) ? 'done' : si.stage === k ? 'active' : '';
+        return `<div class="stage-seg ${cls}" style="font-size:10px;">${labels[i]}</div>`;
+      }).join('') + '</div>';
+  }
+
   async function refreshQueue() {
     const items = await fetch('/api/queue').then(r => r.json()).catch(() => []);
+    // Track queued filenames so the file browser can hide them
+    _queuedFilenames = new Set(items.map(i => i.filename).filter(Boolean));
     const qList = document.getElementById('queue-list');
     const rList = document.getElementById('review-list');
     const pending   = items.filter(i => ['pending','processing','error'].includes(i.status));
@@ -640,38 +1042,31 @@
     document.getElementById('queue-count').textContent = pending.length + ' files';
     document.getElementById('review-count').textContent = forReview.length + ' awaiting review';
 
-    const stageLabels = ['Reading', 'Matching', 'Analyzing', 'Scoring'];
-    const stageKeys   = ['reading', 'matching', 'analyzing', 'scoring'];
-
     qList.innerHTML = pending.length === 0
       ? '<div class="empty">No files in queue</div>'
-      : pending.map(item => {
-          const si = fileStages[item.filename] || {stage: null, done: []};
-          let stageBar = '';
-          if (item.status === 'processing') {
-            const activeIdx  = si.stage ? stageKeys.indexOf(si.stage) : -1;
-            const activeLabel = activeIdx >= 0 ? stageLabels[activeIdx] : '';
-            stageBar = '<div class="stage-bar">' +
-              stageKeys.map((k, i) => {
-                const isDone   = si.done && si.done.includes(k);
-                const isActive = si.stage === k;
-                const cls = isDone ? 'done' : isActive ? 'active' : '';
-                return `<div class="stage-seg ${cls}">${stageLabels[i]}</div>`;
-              }).join('') +
-            '</div>' +
-            (activeLabel ? `<div class="stage-current-label">Stage: ${esc(activeLabel)}&hellip;</div>` : '');
-          }
-          return `<div class="queue-item">
-            <div class="queue-item-header">
-              <span class="name" title="${esc(item.filename)}">${esc(item.filename)}</span>
-              <span class="badge ${item.status}">${item.status}</span>
-              ${item.status === 'error' ? `<span title="${esc(item.error||'')}" style="color:#991b1b;cursor:help;">⚠</span>` : ''}
-              ${item.status === 'pending' ? `<button class="btn sm" onclick="processOne('${esc(item.filename)}')">Process This Doc</button>` : ''}
+      : '<div class="q-cards-wrap">' + pending.map(item => {
+          const ext = (item.filename.split('.').pop() || '').toLowerCase();
+          const isProcessing = item.status === 'processing';
+          const isError      = item.status === 'error';
+          const si  = fileStages[item.filename] || {stage: null, done: []};
+          const basename = item.filename.replace(/\.[^.]+$/, '');
+          const mtimeStr = item.mtime ? fmtMtime(item.mtime) : '';
+          const stageBar = isProcessing ? buildMiniStageBar(si) : '';
+          const cardCls  = isProcessing ? 'q-card processing' : isError ? 'q-card error-card' : 'q-card';
+          return `<div class="${cardCls}">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;">
+              <div class="q-card-name" title="${esc(item.filename)}">${esc(basename)}</div>
+              <span class="q-fmt-badge ${ext}">${ext.toUpperCase()}</span>
+            </div>
+            ${mtimeStr ? `<div class="q-card-meta">${mtimeStr}</div>` : ''}
+            ${isError ? `<div class="q-card-meta" style="color:#991b1b;" title="${esc(item.error||'')}">⚠ ${esc(item.error||'Error')}</div>` : ''}
+            ${stageBar}
+            <div class="q-card-actions">
+              ${!isProcessing ? `<button class="btn sm green" onclick="processOne('${esc(item.filename)}')">▶ Process</button>` : ''}
               <button class="btn sm" onclick="removeFile('${esc(item.filename)}')" title="Remove">✕</button>
             </div>
-            ${stageBar}
           </div>`;
-        }).join('');
+        }).join('') + '</div>';
 
     rList.innerHTML = forReview.length === 0
       ? '<div class="empty">No documents awaiting review</div>'
@@ -719,75 +1114,187 @@
     refreshQueue();
   }
 
-  // ── SSE stage → process stage mapping ────────────────────────
+  // ── SSE stage → mini card stage mapping ──────────────────────
   function sseToProcessStage(sseStage) {
-    if (sseStage === 'intake')                                          return 'reading';
-    if (sseStage === 'reference_check')                                 return 'matching';
+    if (sseStage === 'intake')                                               return 'reading';
+    if (sseStage === 'reference_check')                                      return 'matching';
     if (['claude_send','claude_analyze','claude_results'].includes(sseStage)) return 'analyzing';
-    if (['confidence','reference','duplicate','review'].includes(sseStage))   return 'scoring';
+    if (['confidence','reference','duplicate','review'].includes(sseStage))  return 'scoring';
     return null;
   }
 
-  // ── Processing ────────────────────────────────────────────────
-  async function processAll() {
-    const btn = document.getElementById('process-btn');
-    btn.disabled = true;
-    showProgress(0, 'Starting…');
-    const r = await fetch('/api/process/all', {method:'POST'}).then(r => r.json()).catch(() => null);
-    if (r) {
-      const total = r.count || 1;
-      const poll = setInterval(async () => {
-        const items = await fetch('/api/queue').then(r => r.json()).catch(() => []);
-        const processing = items.filter(i => i.status === 'processing').length;
-        const done = items.filter(i => ['review','filed','error'].includes(i.status)).length;
-        const pct  = Math.round((done / total) * 100);
-        showProgress(pct, processing > 0 ? `Analyzing ${processing} document${processing>1?'s':''}…` : 'Complete');
-        if (processing === 0) {
-          clearInterval(poll);
-          btn.disabled = false;
-          hideProgress();
-          refreshQueue();
-          refreshActivity();
-          refreshRecent();
-          refreshStats();
-        }
-      }, 1500);
-    } else {
-      btn.disabled = false;
-      hideProgress();
-    }
+  // ── SSE stage → pipeline dot index (0-4) ─────────────────────
+  function sseToPipelineStage(sseStage) {
+    if (sseStage === 'reference_check')                                       return 0;
+    if (['claude_send','claude_analyze','claude_results'].includes(sseStage)) return 1;
+    if (sseStage === 'confidence')                                            return 2;
+    if (['reference','duplicate'].includes(sseStage))                        return 3;
+    if (sseStage === 'review')                                                return 4;
+    return -1;
   }
 
-  async function processOne(filename) {
-    showProgress(5, 'Starting…');
-    fileStages[filename] = {stage: 'reading', done: []};
-    refreshQueue();
-    const source = new EventSource('/api/process/' + encodeURIComponent(filename));
-    source.onmessage = e => {
-      const data = JSON.parse(e.data);
-      const ps   = sseToProcessStage(data.stage);
-      if (ps) {
-        const order = ['reading','matching','analyzing','scoring'];
-        const idx   = order.indexOf(ps);
-        fileStages[filename] = {stage: ps, done: order.slice(0, idx)};
-        refreshQueue();
+  // ── Pipeline panel helpers ────────────────────────────────────
+  function showPipeline(filename, remaining) {
+    const panel = document.getElementById('pipeline-panel');
+    panel.style.display = '';
+    panel.style.opacity = '0';
+    requestAnimationFrame(() => { panel.style.opacity = '1'; });
+    document.getElementById('pipeline-filename').textContent = filename;
+    document.getElementById('pipeline-queue-label').textContent =
+      remaining > 0 ? remaining + ' more in queue' : '';
+    document.getElementById('pipeline-done-msg').style.display = 'none';
+    for (let i = 0; i < 5; i++) {
+      document.getElementById('ps-dot-' + i).className = 'ps-dot ps-pending';
+    }
+    document.getElementById('pipeline-bar-fill').style.width = '0%';
+    document.getElementById('pipeline-pct-label').textContent = '0%';
+    clearInterval(_pipelineTimerID);
+    _pipelineStart   = Date.now();
+    _pipelineTimerID = setInterval(() => {
+      const secs = ((Date.now() - _pipelineStart) / 1000).toFixed(1);
+      document.getElementById('pipeline-timer').textContent = secs + 's';
+    }, 100);
+  }
+
+  function updatePipelineProgress(sseStage, pct) {
+    const idx = sseToPipelineStage(sseStage);
+    for (let i = 0; i < 5; i++) {
+      const d = document.getElementById('ps-dot-' + i);
+      if (idx === -1) {
+        // intake stage — all pending
+        d.className = 'ps-dot ps-pending';
+      } else if (i < idx) {
+        d.className = 'ps-dot ps-done';
+      } else if (i === idx) {
+        d.className = 'ps-dot ps-active';
+      } else {
+        d.className = 'ps-dot ps-pending';
       }
-      showProgress(data.pct || 50, data.label || 'Processing…');
-      if (data.stage === 'review' || data.stage === 'error') {
-        // Show all stages complete briefly before transitioning
-        fileStages[filename] = {stage: null, done: ['reading','matching','analyzing','scoring']};
-        refreshQueue();
-        source.close();
-        setTimeout(() => {
-          hideProgress();
+    }
+    document.getElementById('pipeline-bar-fill').style.width = pct + '%';
+    document.getElementById('pipeline-pct-label').textContent = pct + '%';
+  }
+
+  function hidePipeline() {
+    clearInterval(_pipelineTimerID);
+    for (let i = 0; i < 5; i++) {
+      document.getElementById('ps-dot-' + i).className = 'ps-dot ps-done';
+    }
+    document.getElementById('pipeline-bar-fill').style.width = '100%';
+    document.getElementById('pipeline-pct-label').textContent = '100%';
+    const doneMsg = document.getElementById('pipeline-done-msg');
+    doneMsg.style.display = '';
+    const panel = document.getElementById('pipeline-panel');
+    setTimeout(() => {
+      panel.style.opacity = '0';
+      setTimeout(() => {
+        panel.style.display = 'none';
+        doneMsg.style.display = 'none';
+      }, 300);
+    }, 1500);
+  }
+
+  // ── Core SSE runner — returns Promise<stage> ──────────────────
+  // onUpdate(data) called for each SSE message (optional)
+  function _runSSE(filename, onUpdate) {
+    return new Promise(resolve => {
+      fileStages[filename] = { stage: 'reading', done: [] };
+      refreshQueue();
+      const source = new EventSource('/api/process/' + encodeURIComponent(filename));
+      source.onmessage = e => {
+        const data = JSON.parse(e.data);
+        if (onUpdate) onUpdate(data);
+        const ps = sseToProcessStage(data.stage);
+        if (ps) {
+          const order = ['reading','matching','analyzing','scoring'];
+          const idx   = order.indexOf(ps);
+          fileStages[filename] = { stage: ps, done: order.slice(0, idx) };
           refreshQueue();
-          refreshActivity();
-          refreshStats();
-          if (data.stage === 'review') openReview(filename);
-        }, 800);
+        }
+        if (data.stage === 'review' || data.stage === 'error') {
+          fileStages[filename] = { stage: null, done: ['reading','matching','analyzing','scoring'] };
+          refreshQueue();
+          source.close();
+          resolve(data.stage);
+        }
+      };
+      source.onerror = () => { source.close(); resolve('error'); };
+    });
+  }
+
+  async function _postActivityTiming(filename, elapsed) {
+    await fetch('/api/activity/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: filename + ' — processed in ' + elapsed + 's', level: 'success' }),
+    }).catch(() => null);
+  }
+
+  // ── Process All — sequential FIFO ────────────────────────────
+  async function processAll() {
+    const items = await fetch('/api/queue').then(r => r.json()).catch(() => []);
+    const pending = items.filter(i => i.status === 'pending');
+    if (!pending.length) return;
+
+    const btn = document.getElementById('process-btn');
+    btn.disabled = true;
+    _pipelineActive = true;
+
+    for (let i = 0; i < pending.length; i++) {
+      const filename  = pending[i].filename;
+      const remaining = pending.length - i - 1;
+      showPipeline(filename, remaining);
+      const docStart = Date.now();
+
+      await _runSSE(filename, data => updatePipelineProgress(data.stage, data.pct || 0));
+
+      const elapsed = ((Date.now() - docStart) / 1000).toFixed(1);
+      await _postActivityTiming(filename, elapsed);
+      await refreshActivity();
+      await refreshStats();
+
+      if (remaining > 0) {
+        // Brief pause between documents — show "Ready for review!" flash
+        const doneMsg = document.getElementById('pipeline-done-msg');
+        doneMsg.style.display = '';
+        for (let d = 0; d < 5; d++) document.getElementById('ps-dot-' + d).className = 'ps-dot ps-done';
+        document.getElementById('pipeline-bar-fill').style.width = '100%';
+        document.getElementById('pipeline-pct-label').textContent = '100%';
+        await new Promise(r => setTimeout(r, 700));
+        doneMsg.style.display = 'none';
       }
-    };
-    source.onerror = () => { source.close(); hideProgress(); refreshQueue(); };
+    }
+
+    _pipelineActive = false;
+    btn.disabled = false;
+    hidePipeline();
+    refreshQueue();
+    refreshActivity();
+    refreshRecent();
+    refreshStats();
+  }
+
+  // ── Process single file ───────────────────────────────────────
+  async function processOne(filename) {
+    showPipeline(filename, 0);
+    const docStart = Date.now();
+
+    const outcome = await _runSSE(filename, data => updatePipelineProgress(data.stage, data.pct || 0));
+
+    const elapsed = ((Date.now() - docStart) / 1000).toFixed(1);
+    await _postActivityTiming(filename, elapsed);
+
+    // Hold 100% briefly so user sees completion
+    for (let i = 0; i < 5; i++) document.getElementById('ps-dot-' + i).className = 'ps-dot ps-done';
+    document.getElementById('pipeline-bar-fill').style.width = '100%';
+    document.getElementById('pipeline-pct-label').textContent = '100%';
+    await new Promise(r => setTimeout(r, 600));
+
+    hidePipeline();
+    refreshQueue();
+    refreshActivity();
+    refreshStats();
+    if (outcome === 'review') openReview(filename);
   }
 
   function showProgress(pct, label) {
@@ -820,6 +1327,11 @@
     document.getElementById('review-modal').classList.remove('open');
     currentFilename = null;
     currentResult   = null;
+  }
+
+  function openViewScan() {
+    if (!currentFilename) return;
+    window.open('/api/view-scan?filename=' + encodeURIComponent(currentFilename), '_blank');
   }
 
   function confClass(result, field) {
@@ -973,23 +1485,9 @@
     document.getElementById('modal-fields').innerHTML = refBanner + `
 
       <!-- ── Static fields ── -->
-      <div class="field-row">
-        <div class="field-group">
-          <label>Document type</label>
-          ${buildSelect('f-document_type', canonicalValues.document_types || ['bill','invoice','receipt'], r.document_type)}
-        </div>
-        <div class="field-group">
-          <label>Vendor category</label>
-          ${buildSelect('f-vendor_category', vcats, r.vendor_category || '')}
-        </div>
-      </div>
       <div class="field-group">
         <label>Vendor</label>
         <input id="f-vendor_name_normalized" class="${confClass(r,'vendor')}" value="${esc(vendor)}">
-      </div>
-      <div class="field-group">
-        <label>Account number</label>
-        <input id="f-account_number" class="${confClass(r,'account_number')}" value="${esc(acct)}">
       </div>
       <div class="field-row">
         <div class="field-group">
@@ -1001,6 +1499,26 @@
           ${buildUnitSelect('f-unit', prop, r.unit || '')}
         </div>
       </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Document type</label>
+          ${buildSelect('f-document_type', canonicalValues.document_types || ['bill','invoice','receipt'], r.document_type)}
+        </div>
+        <div class="field-group">
+          <label>Vendor category</label>
+          ${buildSelect('f-vendor_category', vcats, r.vendor_category || '')}
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-group">
+          <label>Account number</label>
+          <input id="f-account_number" class="${confClass(r,'account_number')}" value="${esc(acct)}">
+        </div>
+        <div class="field-group">
+          <label>Billing frequency</label>
+          ${buildSelect('f-billing_frequency', ['','Weekly','Monthly','Bi-Monthly','Quarterly','Yearly','Random'], r.billing_frequency || '')}
+        </div>
+      </div>
       <!-- Service address — hidden from UI, preserved in data -->
       <input type="hidden" id="f-service_address" value="${esc(r.service_address || '')}">
 
@@ -1010,11 +1528,11 @@
       <div class="field-row">
         <div class="field-group">
           <label>Bill date</label>
-          <input id="f-bill_date" class="${confClass(r,'date')}" value="${esc(r.bill_date || '')}">
+          <input type="date" id="f-bill_date" class="${confClass(r,'date')}" value="${esc(r.bill_date || '')}">
         </div>
         <div class="field-group">
           <label>Due date</label>
-          <input id="f-due_date" class="${confClass(r,'due_date')}" value="${esc(due)}">
+          <input type="date" id="f-due_date" class="${confClass(r,'due_date')}" value="${esc(due)}">
         </div>
       </div>
       ${overdueWarn}
@@ -1290,6 +1808,7 @@
       payments_received:       getFieldValue('f-payments_received'),
       late_fees:               getFieldValue('f-late_fees'),
       payment_status:          getFieldValue('f-payment_status'),
+      billing_frequency:       getFieldValue('f-billing_frequency'),
       description_of_charges:  getFieldValue('f-description_of_charges'),
       _confidence:             currentResult ? currentResult._confidence : '',
       _reference_match:        currentResult ? !!currentResult._reference_match : false,
@@ -1433,7 +1952,7 @@
         const badge       = r.is_overdue
           ? statusBadge + ` <span class="badge overdue" style="font-size:10px;">Overdue</span>`
           : statusBadge;
-        return `<tr class="${cls}" onclick="openDocumentEdit(${rowIdx})" title="Click to edit" style="cursor:pointer;">
+        return `<tr class="${cls}" onclick="openDocumentEdit(${rowIdx})" style="cursor:pointer;" title="Click to edit">
           <td style="padding:6px 8px;color:#888;white-space:nowrap;">${r.document_date||'—'}</td>
           <td style="padding:6px 8px;font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.vendor_name||'')}">${r.vendor_name||'—'}</td>
           <td style="padding:6px 8px;color:#888;white-space:nowrap;">${r.property||'—'}</td>
@@ -1467,38 +1986,24 @@
 
     const overlay = document.createElement('div');
     overlay.id = 'edit-modal-overlay';
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:24px 16px;overflow-y:auto;';
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;display:flex;align-items:center;justify-content:center;padding:24px 16px;';
 
     const modal = document.createElement('div');
-    modal.style.cssText = 'background:#fff;border-radius:12px;width:640px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);margin:auto;';
+    modal.style.cssText = 'background:#fff;border-radius:12px;width:640px;max-width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.3);display:flex;flex-direction:column;max-height:90vh;overflow:hidden;';
 
     modal.innerHTML = `
-      <div class="modal-header" style="position:sticky;top:0;background:#fff;z-index:5;border-radius:12px 12px 0 0;">
+      <div class="modal-header" style="background:#fff;border-radius:12px 12px 0 0;">
         <div>
-          <h2 style="font-size:15px;font-weight:600;">${esc(r.vendor_name||'Document')}</h2>
-          <div style="font-size:12px;color:#888;margin-top:2px;">${esc(r.document_date||'')} · ${r.amount_due?'$'+r.amount_due:''} · ${esc(r.property||'')}</div>
+          <h2 style="font-size:15px;font-weight:600;">Review & File</h2>
+          <div style="font-size:12px;color:#888;margin-top:2px;">${esc(r.vendor_name||'')} · ${esc(r.document_date||'')} · ${r.amount_due?'$'+r.amount_due:''}</div>
         </div>
         <button class="close-btn" onclick="document.getElementById('edit-modal-overlay').remove()">×</button>
       </div>
       <div class="modal-body">
         ${auditHtml}
-        <div class="field-row">
-          <div class="field-group">
-            <label>Document type</label>
-            ${buildSelect('ed-document_type', dtypes, r.document_type || '')}
-          </div>
-          <div class="field-group">
-            <label>Vendor category</label>
-            ${buildSelect('ed-vendor_category', vcats, r.vendor_category || '')}
-          </div>
-        </div>
         <div class="field-group">
           <label>Vendor name</label>
           <input id="ed-vendor_name" value="${esc(r.vendor_name||'')}">
-        </div>
-        <div class="field-group">
-          <label>Account number</label>
-          <input id="ed-account_number" value="${esc(r.account_number||'')}">
         </div>
         <div class="field-row">
           <div class="field-group">
@@ -1510,17 +2015,37 @@
             ${buildUnitSelect('ed-unit', prop, r.unit || '')}
           </div>
         </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Document type</label>
+            ${buildSelect('ed-document_type', dtypes, r.document_type || '')}
+          </div>
+          <div class="field-group">
+            <label>Vendor category</label>
+            ${buildSelect('ed-vendor_category', vcats, r.vendor_category || '')}
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-group">
+            <label>Account number</label>
+            <input id="ed-account_number" value="${esc(r.account_number||'')}">
+          </div>
+          <div class="field-group">
+            <label>Billing frequency</label>
+            ${buildSelect('ed-billing_frequency', ['','Weekly','Monthly','Bi-Monthly','Quarterly','Yearly','Random'], r.billing_frequency || '')}
+          </div>
+        </div>
 
         <div class="modal-divider"></div>
 
         <div class="field-row">
           <div class="field-group">
             <label>Document date</label>
-            <input id="ed-document_date" value="${esc(r.document_date||'')}">
+            <input type="date" id="ed-document_date" value="${esc(r.document_date||'')}">
           </div>
           <div class="field-group">
             <label>Due date</label>
-            <input id="ed-due_date" value="${esc(r.due_date||'')}">
+            <input type="date" id="ed-due_date" value="${esc(r.due_date||'')}">
           </div>
         </div>
         <div class="field-row">
@@ -1594,12 +2119,11 @@
           <strong>Timestamp:</strong> ${esc(r.timestamp||'—')}
         </div>
       </div>
-      <div class="modal-footer" style="justify-content:space-between;">
-        <button class="btn danger" onclick="confirmDeleteRecord(${displayIndex})">Delete Record + File</button>
-        <div style="display:flex;gap:8px;">
-          <button class="btn" onclick="document.getElementById('edit-modal-overlay').remove()">Cancel</button>
-          <button class="btn green" onclick="saveDocumentEdit(${displayIndex})">Save Changes</button>
-        </div>
+      <div class="modal-footer" style="gap:8px;display:flex;justify-content:stretch;">
+        <button class="btn danger" style="flex:1;" onclick="confirmDeleteRecord(${displayIndex})">Delete Record &amp; Document</button>
+        <button class="btn green"  style="flex:1;" onclick="saveDocumentEdit(${displayIndex})">Save Changes</button>
+        <button class="btn"        style="flex:1;" onclick="viewEditPdf()" ${r.final_storage_path ? '' : 'disabled title="No filed PDF"'}>👁 View PDF</button>
+        <button class="btn"        style="flex:1;" onclick="document.getElementById('edit-modal-overlay').remove()">Cancel</button>
       </div>
     `;
 
@@ -1611,6 +2135,11 @@
   function getEditFieldValue(id) {
     const el = document.getElementById(id);
     return el ? el.value : '';
+  }
+
+  function viewEditPdf() {
+    if (!_editRecord || !_editRecord.final_storage_path) return;
+    window.open('/api/view-file?path=' + encodeURIComponent(_editRecord.final_storage_path), '_blank');
   }
 
   async function saveDocumentEdit(displayIndex) {
@@ -1629,6 +2158,7 @@
       payments_received:            getEditFieldValue('ed-payments_received'),
       late_fees:                    getEditFieldValue('ed-late_fees'),
       payment_status:               getEditFieldValue('ed-payment_status'),
+      billing_frequency:            getEditFieldValue('ed-billing_frequency'),
       review_required_accounting:   getEditFieldValue('ed-review_required_accounting'),
       accounting_notes:             getEditFieldValue('ed-accounting_notes'),
     };
@@ -1704,7 +2234,7 @@
       refreshActivity();
       refreshStats();
     } else {
-      alert('Delete failed');
+      alert('Delete failed: ' + (res?.error || 'unknown error'));
     }
   }
 
@@ -1738,6 +2268,342 @@
       document.getElementById('fmc-cancel').onclick  = () => { overlay.remove(); resolve(false); };
       document.getElementById('fmc-confirm').onclick = () => { overlay.remove(); resolve(true);  };
     });
+  }
+
+  // ════════════════════════════════════════════════════════════════
+  // Embedded Coverage Matrix
+  // ════════════════════════════════════════════════════════════════
+  let _covYear  = new Date().getFullYear();
+  let _covPopDoc = null;
+
+  function _covParseAmt(v) {
+    if (!v) return 0;
+    const n = parseFloat(String(v).replace(/[$,]/g, ''));
+    return isNaN(n) ? 0 : n;
+  }
+  function _covFmtMonth(ym) {
+    const [y, m] = ym.split('-');
+    return new Date(+y, +m - 1, 1).toLocaleString('en-US', {month: 'short'});
+  }
+
+  async function loadCoverageMatrix(year) {
+    year = year || _covYear;
+    _covYear = year;
+    document.getElementById('cov-loading').style.display = '';
+    document.getElementById('cov-matrix').style.display  = 'none';
+    document.getElementById('cov-year-label').textContent = year;
+
+    const data = await fetch('/api/coverage-matrix?year=' + year).then(r => r.json()).catch(() => null);
+    if (!data) { document.getElementById('cov-loading').textContent = 'Failed to load.'; return; }
+    document.getElementById('cov-loading').style.display = 'none';
+    document.getElementById('cov-matrix').style.display  = '';
+
+    const headEl = document.getElementById('cov-head');
+    const bodyEl = document.getElementById('cov-body');
+
+    // Header
+    headEl.innerHTML = '';
+    const hr = document.createElement('tr');
+    ['Vendor', 'Acct', 'Unit'].forEach(lbl => {
+      const th = document.createElement('th'); th.className = 'cov-lbl'; th.textContent = lbl; hr.appendChild(th);
+    });
+    data.months.forEach(m => {
+      const th = document.createElement('th'); th.textContent = _covFmtMonth(m); hr.appendChild(th);
+    });
+    const thYtd = document.createElement('th'); thYtd.className = 'cov-ytd'; thYtd.textContent = 'YTD'; hr.appendChild(thYtd);
+    headEl.appendChild(hr);
+
+    // Body
+    bodyEl.innerHTML = '';
+    const grandTotals = Object.fromEntries(data.months.map(m => [m, 0]));
+    let   grandYtd    = 0;
+    const byProp      = {};
+    data.rows.forEach(row => { const p = row.property || 'Unknown'; (byProp[p] = byProp[p] || []).push(row); });
+
+    Object.entries(byProp).forEach(([prop, propRows]) => {
+      const gr = document.createElement('tr'); gr.className = 'cov-group';
+      const td = document.createElement('td'); td.colSpan = 4 + data.months.length; td.textContent = prop;
+      gr.appendChild(td); bodyEl.appendChild(gr);
+
+      const propTotals = Object.fromEntries(data.months.map(m => [m, 0]));
+      let   propYtd    = 0;
+
+      propRows.forEach(row => {
+        const tr = document.createElement('tr');
+        [
+          { val: row.vendor_name, cls: '', title: row.vendor_name, style: 'font-weight:500;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;' },
+          { val: row.account_number || '—', cls: '', style: 'font-family:monospace;color:#666;' },
+          { val: row.unit || '—', cls: '', style: 'color:#888;' },
+        ].forEach(({val, cls, title, style}) => {
+          const td = document.createElement('td');
+          if (cls) td.className = cls;
+          if (style) td.style.cssText = style;
+          td.textContent = val;
+          if (title) td.title = title;
+          tr.appendChild(td);
+        });
+
+        let rowYtd = 0;
+        data.months.forEach(m => {
+          const cell = row.cells[m];
+          const td   = document.createElement('td');
+          if (!cell || cell.status === 'missing' || cell.status === 'optional') {
+            td.className = 'cov-miss'; td.textContent = '—';
+          } else if (cell.status === 'not_expected') {
+            td.className = 'cov-no-bill'; td.textContent = '⚫';
+          } else {
+            const amt = _covParseAmt(cell.doc && cell.doc.amount_due);
+            td.className = 'cov-amt';
+            td.textContent = amt ? '$' + amt.toFixed(2) : '—';
+            if (amt) { rowYtd += amt; propTotals[m] += amt; grandTotals[m] += amt; }
+            if (cell.doc) {
+              td.addEventListener('click', e => openCovActPopup(e, cell.doc,
+                `${row.vendor_name} — ${_covFmtMonth(m)} ${_covYear}`));
+            }
+          }
+          tr.appendChild(td);
+        });
+
+        propYtd  += rowYtd;
+        grandYtd += rowYtd;
+        const tdYtd = document.createElement('td');
+        tdYtd.className = 'cov-ytd-cell';
+        tdYtd.textContent = rowYtd ? '$' + rowYtd.toFixed(2) : '—';
+        tr.appendChild(tdYtd);
+        bodyEl.appendChild(tr);
+      });
+
+      // Property subtotal
+      const sr = document.createElement('tr'); sr.className = 'cov-sub';
+      const stl = document.createElement('td'); stl.colSpan = 3; stl.textContent = prop + ' total';
+      stl.style.paddingLeft = '8px'; sr.appendChild(stl);
+      data.months.forEach(m => {
+        const td = document.createElement('td'); td.style.textAlign = 'right'; td.style.fontWeight = '600';
+        td.textContent = propTotals[m] ? '$' + propTotals[m].toFixed(2) : '—';
+        sr.appendChild(td);
+      });
+      const stYtd = document.createElement('td'); stYtd.className = 'cov-ytd-cell';
+      stYtd.textContent = propYtd ? '$' + propYtd.toFixed(2) : '—';
+      sr.appendChild(stYtd);
+      bodyEl.appendChild(sr);
+    });
+
+    // Grand total
+    const gtr = document.createElement('tr'); gtr.className = 'cov-grand';
+    const gtl = document.createElement('td'); gtl.colSpan = 3; gtl.textContent = 'Grand Total';
+    gtl.style.paddingLeft = '8px'; gtr.appendChild(gtl);
+    data.months.forEach(m => {
+      const td = document.createElement('td'); td.style.textAlign = 'right';
+      td.textContent = grandTotals[m] ? '$' + grandTotals[m].toFixed(2) : '—';
+      gtr.appendChild(td);
+    });
+    const gtYtd = document.createElement('td'); gtYtd.className = 'cov-ytd-cell';
+    gtYtd.textContent = grandYtd ? '$' + grandYtd.toFixed(2) : '—';
+    gtr.appendChild(gtYtd);
+    bodyEl.appendChild(gtr);
+  }
+
+  function covChangeYear(d) { loadCoverageMatrix(_covYear + d); }
+
+  // ── shared action popup (used by embedded matrix) ──────────────
+  function openCovActPopup(evt, doc, title) {
+    evt.stopPropagation();
+    _covPopDoc = doc;
+    let popup = document.getElementById('cov-act-popup');
+    if (!popup) {
+      popup = document.createElement('div');
+      popup.id = 'cov-act-popup';
+      popup.className = 'act-popup';
+      popup.innerHTML =
+        '<div class="act-popup-title" id="cov-act-title"></div>' +
+        '<button class="act-btn" id="cov-act-edit" onclick="covActEdit()">✏ Edit Record</button>' +
+        '<button class="act-btn" id="cov-act-pdf"  onclick="covActPdf()">📄 View PDF</button>';
+      document.body.appendChild(popup);
+    }
+    document.getElementById('cov-act-title').textContent = title;
+    const hasPdf = !!(doc.final_storage_path);
+    document.getElementById('cov-act-pdf').classList.toggle('disabled', !hasPdf);
+    popup.classList.add('open');
+    const x = Math.min(evt.clientX + 4, window.innerWidth  - popup.offsetWidth  - 8);
+    const y = Math.min(evt.clientY + 4, window.innerHeight - popup.offsetHeight - 8);
+    popup.style.left = x + 'px';
+    popup.style.top  = y + 'px';
+  }
+
+  function covActEdit() {
+    if (!_covPopDoc || _covPopDoc.row_index == null) return;
+    document.getElementById('cov-act-popup').classList.remove('open');
+    openDocumentEdit(_covPopDoc.row_index);
+  }
+
+  function covActPdf() {
+    if (!_covPopDoc || !_covPopDoc.final_storage_path) return;
+    document.getElementById('cov-act-popup').classList.remove('open');
+    window.open('/api/view-file?path=' + encodeURIComponent(_covPopDoc.final_storage_path), '_blank');
+  }
+
+  document.addEventListener('click', e => {
+    const p = document.getElementById('cov-act-popup');
+    if (p && !p.contains(e.target)) p.classList.remove('open');
+  });
+
+  // ── auto-open edit modal if ?edit=N in URL ─────────────────────
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    const editIdx = params.get('edit');
+    if (editIdx !== null) {
+      window.addEventListener('DOMContentLoaded', async () => {
+        await new Promise(r => setTimeout(r, 600));   // wait for recentRows to populate
+        openDocumentEdit(parseInt(editIdx, 10));
+        // Clean URL
+        history.replaceState(null, '', window.location.pathname);
+      });
+    }
+  })();
+</script>
+
+<!-- Trigger embedded coverage matrix load after DOMContentLoaded data is ready -->
+<script>
+  window.addEventListener('DOMContentLoaded', () => { loadCoverageMatrix(); });
+</script>
+
+<!-- ── Manage Spaces modal ──────────────────────────────────── -->
+<div class="modal-backdrop" id="spaces-modal-backdrop" onclick="if(event.target===this)closeSpacesModal()">
+  <div class="modal" style="width:500px;" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Manage Property Media Spaces</h2>
+      <button class="close-btn" onclick="closeSpacesModal()">×</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Current spaces -->
+      <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">Current Spaces</div>
+      <div id="spaces-list" style="font-size:12px;color:#555;margin-bottom:16px;">Loading…</div>
+
+      <div class="modal-divider"></div>
+
+      <!-- Add new space -->
+      <div style="font-size:11px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">Add New Space</div>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div>
+          <label style="font-size:12px;font-weight:500;display:block;margin-bottom:4px;">Space name</label>
+          <input id="new-space-name" type="text" placeholder="e.g. Basement-Laundry"
+                 style="width:100%;padding:7px 10px;border:1px solid #d0d0c8;border-radius:6px;font-size:13px;outline:none;"
+                 onkeydown="if(event.key==='Enter')addSpace()">
+        </div>
+        <div>
+          <div style="font-size:12px;font-weight:500;margin-bottom:6px;">Add to properties</div>
+          <div id="spaces-prop-checks" style="display:flex;flex-direction:column;gap:5px;">Loading…</div>
+        </div>
+        <div id="spaces-add-error" style="font-size:12px;color:#991b1b;display:none;"></div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeSpacesModal()">Close</button>
+      <button class="btn green" id="spaces-add-btn" onclick="addSpace()">Add Space</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let _spacesData = null;
+
+  async function openSpacesModal() {
+    document.getElementById('spaces-modal-backdrop').classList.add('open');
+    document.getElementById('new-space-name').value = '';
+    document.getElementById('spaces-add-error').style.display = 'none';
+    await _loadSpaces();
+  }
+
+  function closeSpacesModal() {
+    document.getElementById('spaces-modal-backdrop').classList.remove('open');
+  }
+
+  async function _loadSpaces() {
+    document.getElementById('spaces-list').textContent = 'Loading…';
+    document.getElementById('spaces-prop-checks').textContent = 'Loading…';
+    const data = await fetch('/api/property-media-spaces').then(r => r.json()).catch(() => null);
+    if (!data) {
+      document.getElementById('spaces-list').textContent = 'Could not load spaces.';
+      return;
+    }
+    _spacesData = data;
+    _renderSpaces(data.properties);
+  }
+
+  function _renderSpaces(properties) {
+    const listEl = document.getElementById('spaces-list');
+    const checksEl = document.getElementById('spaces-prop-checks');
+
+    if (!properties || properties.length === 0) {
+      listEl.textContent = 'D:/PropertyMedia not found or empty.';
+      checksEl.textContent = 'No properties available.';
+      return;
+    }
+
+    // Current spaces table
+    listEl.innerHTML = properties.map(prop => {
+      const spaceNames = prop.spaces.map(s => s.name).join(', ') || '—';
+      return `<div style="margin-bottom:8px;">
+        <div style="font-weight:600;color:#1a1a1a;margin-bottom:2px;">${esc(prop.name)}</div>
+        <div style="color:#777;font-size:11px;line-height:1.6;">${esc(spaceNames)}</div>
+      </div>`;
+    }).join('');
+
+    // Property checkboxes for Add New Space
+    checksEl.innerHTML = properties.map((prop, i) => {
+      const id = 'sp-chk-' + i;
+      return `<label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;">
+        <input type="checkbox" id="${id}" value="${esc(prop.name)}" checked style="width:14px;height:14px;">
+        ${esc(prop.name)}
+      </label>`;
+    }).join('');
+  }
+
+  async function addSpace() {
+    const name = (document.getElementById('new-space-name').value || '').trim();
+    const errEl = document.getElementById('spaces-add-error');
+    errEl.style.display = 'none';
+
+    if (!name) {
+      errEl.textContent = 'Please enter a space name.';
+      errEl.style.display = '';
+      return;
+    }
+
+    const selected = [...document.querySelectorAll('#spaces-prop-checks input[type=checkbox]:checked')]
+      .map(cb => cb.value);
+    if (selected.length === 0) {
+      errEl.textContent = 'Select at least one property.';
+      errEl.style.display = '';
+      return;
+    }
+
+    const btn = document.getElementById('spaces-add-btn');
+    btn.disabled = true;
+    btn.textContent = 'Adding…';
+
+    const res = await fetch('/api/property-media/add-space', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({space_name: name, properties: selected}),
+    }).then(r => r.json()).catch(() => null);
+
+    btn.disabled = false;
+    btn.textContent = 'Add Space';
+
+    if (!res || res.error) {
+      errEl.textContent = (res && res.error) || 'Request failed.';
+      errEl.style.display = '';
+      return;
+    }
+
+    document.getElementById('new-space-name').value = '';
+    if (res.errors && res.errors.length > 0) {
+      errEl.textContent = 'Warnings: ' + res.errors.join('; ');
+      errEl.style.display = '';
+    }
+    _renderSpaces(res.properties);
   }
 </script>
 </body>

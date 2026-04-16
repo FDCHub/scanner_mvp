@@ -42,6 +42,7 @@ STATIC_FIELDS = [
     "service_address",
     "property_folder_name",
     "document_subfolder",
+    "billing_frequency",
 ]
 
 # Fields that must be extracted from the document on every scan
