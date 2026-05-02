@@ -4,8 +4,8 @@ import os
 import shutil
 from datetime import datetime
 
-VENDOR_PROFILE_PATH = "D:/document_ai_system/scanner_mvp/data/vendor_profiles.json"
-BACKUP_DIR = "D:/document_ai_system/scanner_mvp/backups"
+VENDOR_PROFILE_PATH = "data/vendor_profiles.json"
+BACKUP_DIR          = "data/backups"
 
 def ensure_vendor_profiles_file():
     if not os.path.exists(VENDOR_PROFILE_PATH):

@@ -20,12 +20,21 @@ import re
 from difflib import SequenceMatcher
 from pathlib import Path
 
+# Compiled once — used by normalize_vendor_for_dedup
+_VENDOR_FILLER   = re.compile(r'\b(?:OF|THE|AN?)\b')
+_VENDOR_SUFFIXES = re.compile(
+    r'\b(?:INC(?:ORPORATED)?|LLC|CORP(?:ORATION)?|LTD|LIMITED|COMPANY|AUTHORITY|CO)\b'
+)
+
 REFERENCE_TABLE_PATH = Path(__file__).parent.parent / "data" / "reference_table.csv"
 
 # Vendor categories where account_number is absent — matching uses vendor+property+unit instead
 ACCOUNT_OPTIONAL_CATEGORIES: frozenset[str] = frozenset({
     "handyman services", "handyman", "insurance", "tax", "hoa",
 })
+
+# Vendor categories that never have a regular billing cycle — always treated as Random frequency
+RANDOM_BILLING_CATEGORIES: frozenset[str] = frozenset({"meals", "entertainment"})
 
 
 def _is_account_optional(category: str) -> bool:
@@ -43,6 +52,7 @@ STATIC_FIELDS = [
     "property_folder_name",
     "document_subfolder",
     "billing_frequency",
+    "document_type",
 ]
 
 # Fields that must be extracted from the document on every scan
@@ -57,6 +67,23 @@ DYNAMIC_FIELDS = [
 
 
 # ── Text normalisation helpers ────────────────────────────────────────────────
+
+def normalize_vendor_for_dedup(name: str) -> str:
+    """
+    Collapse common vendor name variants to a canonical form for comparison.
+    Does NOT alter stored data — used only for matching and duplicate detection.
+
+    Transforms:  & → AND, strip punctuation, remove filler words (OF/THE/A/AN),
+                 remove company-type suffixes (INC/LLC/CORP/LTD/COMPANY/AUTHORITY),
+                 collapse whitespace, uppercase.
+    """
+    s = (name or "").upper()
+    s = s.replace("&", "AND")
+    s = re.sub(r"[^\w\s]", " ", s)
+    s = _VENDOR_FILLER.sub(" ", s)
+    s = _VENDOR_SUFFIXES.sub(" ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
 
 def _norm(s: str) -> str:
     """Lowercase, strip all non-alphanumeric — for fuzzy comparison."""
@@ -120,16 +147,17 @@ def match_reference_record(
       match_details maps field_name -> score (0.0–1.0)
       Returns (None, 0, {}) if no row meets the threshold.
     """
-    ext_account  = _norm_account(extracted.get("account_number", ""))
-    ext_vendor   = (
+    ext_account      = _norm_account(extracted.get("account_number", ""))
+    ext_vendor       = (
         extracted.get("vendor_name_normalized")
         or extracted.get("vendor_name_raw")
         or extracted.get("vendor_name")
         or ""
     )
-    ext_address  = extracted.get("service_address", "") or ""
-    ext_property = extracted.get("property", "") or ""
-    ext_unit     = (extracted.get("unit", "") or "").strip().lower()
+    ext_vendor_norm  = normalize_vendor_for_dedup(ext_vendor)
+    ext_address      = extracted.get("service_address", "") or ""
+    ext_property     = extracted.get("property", "") or ""
+    ext_unit         = (extracted.get("unit", "") or "").strip().lower()
 
     best_row, best_count, best_details = None, 0, {}
 
@@ -149,11 +177,12 @@ def match_reference_record(
             if ext_account and ref_account and ext_account == ref_account:
                 hits["account_number"] = 1.0
 
-        # 2 — Vendor name (best of vendor_name / vendor_normalized_name)
-        if ext_vendor:
+        # 2 — Vendor name: normalize both sides before fuzzy comparison so
+        #     suffix/punctuation variants ("Inc." vs "LLC") don't lower the score
+        if ext_vendor_norm:
             score = max(
-                _similarity(ext_vendor, ref.get("vendor_name", "")),
-                _similarity(ext_vendor, ref.get("vendor_normalized_name", "")),
+                _similarity(ext_vendor_norm, normalize_vendor_for_dedup(ref.get("vendor_name", ""))),
+                _similarity(ext_vendor_norm, normalize_vendor_for_dedup(ref.get("vendor_normalized_name", ""))),
             )
             if score >= vendor_threshold:
                 hits["vendor_name"] = score
@@ -200,7 +229,11 @@ def match_reference_record(
 
 def get_static_fields_from_match(ref_row: dict) -> dict:
     """Extract the canonical static fields from a matched reference row."""
-    return {field: (ref_row.get(field) or "") for field in STATIC_FIELDS}
+    result = {field: (ref_row.get(field) or "") for field in STATIC_FIELDS}
+    # document_type defaults to "bill" when absent from the reference table
+    if not result.get("document_type"):
+        result["document_type"] = "bill"
+    return result
 
 
 # ── Address canonicalisation ──────────────────────────────────────────────────

@@ -12,6 +12,8 @@
     "insurance",
     "tax",
     "HOA",
+    "meals",
+    "entertainment",
     "other"
   ],
   "properties": [

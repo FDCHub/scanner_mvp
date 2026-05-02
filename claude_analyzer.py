@@ -390,7 +390,7 @@ Return ONLY a JSON object matching this exact schema (no extra fields, no markdo
         else:
             clean[field] = data.get(field, default)
 
-    # Merge in the confirmed static fields
+    # Merge in ALL confirmed static fields from the reference table
     clean["vendor_name_raw"]        = static_context.get("vendor_name", "")
     clean["vendor_name_normalized"] = static_context.get("vendor_name", "")
     clean["vendor_category"]        = static_context.get("vendor_category", "")
@@ -398,6 +398,8 @@ Return ONLY a JSON object matching this exact schema (no extra fields, no markdo
     clean["property"]               = static_context.get("property", "")
     clean["unit"]                   = static_context.get("unit", "")
     clean["service_address"]        = static_context.get("service_address", "")
+    clean["billing_frequency"]      = static_context.get("billing_frequency", "")
+    clean["document_type"]          = static_context.get("document_type", "") or "bill"
 
     print(
         f"  [Claude/dynamic] Done. "

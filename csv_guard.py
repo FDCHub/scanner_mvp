@@ -110,16 +110,17 @@ def guarded_write(
     post_columns = _get_columns(csv_path)
     post_rows    = _count_rows(csv_path)
 
-    # Column-set check (only if the file already had columns before the write)
-    if pre_columns and post_columns and post_columns != pre_columns:
+    # Column-set check (only if the file already had columns before the write).
+    # Only fail on column removals (data loss); additions are valid schema expansions.
+    if pre_columns and post_columns:
         missing = pre_columns - post_columns
-        extra   = post_columns - pre_columns
-        msg = (
-            f"Column mismatch after writing {csv_path.name}. "
-            f"Missing: {missing or 'none'}  Extra: {extra or 'none'}"
-        )
-        _restore(csv_path, backup_path, alert_fn, msg)
-        raise CSVGuardError(msg)
+        if missing:
+            msg = (
+                f"Column mismatch after writing {csv_path.name}. "
+                f"Missing: {missing}"
+            )
+            _restore(csv_path, backup_path, alert_fn, msg)
+            raise CSVGuardError(msg)
 
     # Suspicious row-count drop check (skipped for intentional deletes)
     if not allow_shrink and pre_rows > 0:

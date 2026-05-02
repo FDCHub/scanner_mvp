@@ -3,6 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Scanner MVP">
+<meta name="theme-color" content="#1a1a1a">
 <title>Scanner MVP</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -19,6 +23,7 @@
 
   /* ── Drive sync indicator ─────────────────────────────────── */
   .sync-indicator { display:flex; align-items:center; gap:6px; font-size:12px; color:#ccc; cursor:default; }
+  .sync-indicator span:last-child { font-weight: 600; }
   .sync-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; }
   .sync-dot.synced      { background:#22c55e; }
   .sync-dot.syncing     { background:#facc15; animation:syncPulse 1s infinite; }
@@ -195,16 +200,37 @@
   .review-item .rv-meta   { font-size: 12px; color: #888; margin-top: 2px; }
 
   /* ── Filter bar ──────────────────────────────────────────── */
-  .filter-bar { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; padding: 8px 10px; background: #f8f8f6; border: 1px solid #e5e5e0; border-radius: 8px; align-items: center; }
-  .filter-bar input, .filter-bar select { padding: 4px 8px; border: 1px solid #d0d0c8; border-radius: 5px; font-size: 12px; font-family: inherit; height: 28px; }
-  .filter-bar input:focus, .filter-bar select:focus { outline: none; border-color: #1a7a4a; }
-  .filter-bar input { width: 130px; }
-  .filter-bar input.date-input { width: 115px; }
-  .filter-bar input.amount-input { width: 70px; }
-  .filter-bar select { width: 110px; }
-  .filter-bar select#filter-search { width: 170px; }
-  .filter-bar .filter-label { font-size: 10px; color: #888; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; }
-  .filter-bar .filter-divider { width: 1px; height: 20px; background: #e5e5e0; }
+  .filter-bar { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; padding: 8px 10px; background: #f8f8f6; border: 1px solid #e5e5e0; border-radius: 8px; }
+  /* Row 1: evenly distributed selects */
+  .filter-row-1 { display: flex; align-items: center; gap: 6px; }
+  .filter-row-1 select {
+    flex: 1; min-width: 0; padding: 0 8px; border: 1px solid #d0d0c8; border-radius: 5px;
+    font-size: 12px; font-family: inherit; height: 32px; box-sizing: border-box;
+    background: #fff; color: #1a1a1a; cursor: pointer;
+  }
+  .filter-row-1 select:focus { outline: none; border-color: #1a7a4a; }
+  /* Row 2: amount group + date group + clear */
+  .filter-row-2 { display: flex; align-items: center; gap: 6px; }
+  .filter-row-2 input[type="date"], .filter-row-2 input[type="text"], .filter-row-2 input:not([type]) {
+    padding: 0 8px; border: 1px solid #d0d0c8; border-radius: 5px;
+    font-size: 12px; font-family: inherit; height: 32px; box-sizing: border-box;
+    background: #fff; color: #1a1a1a;
+  }
+  .filter-row-2 input:focus { outline: none; border-color: #1a7a4a; }
+  .filter-row-2 input[type="date"] { width: 132px; }
+  .filter-sep   { color: #ccc; font-size: 13px; flex-shrink: 0; line-height: 32px; }
+  .filter-vdiv  { width: 1px; height: 22px; background: #d0d0c8; flex-shrink: 0; margin: 0 2px; }
+  /* $ amount inputs — borderless inside wrapper */
+  .filter-amt-wrap {
+    display: flex; align-items: center; border: 1px solid #d0d0c8;
+    border-radius: 5px; overflow: hidden; height: 32px; background: #fff;
+  }
+  .filter-amt-wrap:focus-within { border-color: #1a7a4a; }
+  .filter-amt-wrap input {
+    border: none !important; outline: none; width: 72px; padding: 0 7px;
+    font-size: 12px; font-family: inherit; height: 100%; background: transparent;
+    color: #1a1a1a;
+  }
 
   /* ── Modal ───────────────────────────────────────────────── */
   .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 100; align-items: center; justify-content: center; }
@@ -233,9 +259,26 @@
   .conf-dot.medium { background: #d97706; }
   .conf-dot.low    { background: #dc2626; }
 
-  /* ── Reference match banner ──────────────────────────────── */
-  .ref-match-banner { display:flex; align-items:center; gap:8px; padding:8px 12px; background:#f0faf4; border:1px solid #1a7a4a; border-radius:6px; margin-bottom:14px; font-size:12px; color:#155c38; }
-  .ref-match-banner svg { flex-shrink:0; }
+  /* ── Reference match banner — 4-state ───────────────────── */
+  .ref-match-banner { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:6px; margin-bottom:14px; font-size:12px; border:1px solid; }
+  .ref-match-banner.rt-full    { background:#f0faf4; border-color:#1a7a4a; color:#155c38; }
+  .ref-match-banner.rt-partial { background:#fffbeb; border-color:#d97706; color:#92400e; }
+  .ref-match-banner.rt-weak    { background:#fff5f5; border-color:#dc2626; color:#991b1b; }
+  .ref-match-banner.rt-none    { background:#eff6ff; border-color:#3b82f6; color:#1d4ed8; }
+  .rt-dot { width:9px; height:9px; border-radius:50%; flex-shrink:0; display:inline-block; }
+  .rt-dot.full    { background:#22c55e; }
+  .rt-dot.partial { background:#facc15; }
+  .rt-dot.weak    { background:#ef4444; }
+  .rt-dot.none    { background:#3b82f6; }
+  .rt-pill { padding:1px 6px; border-radius:10px; font-size:10px; font-weight:600; white-space:nowrap; }
+  .rt-pill.hit  { background:#d1fae5; color:#065f46; }
+  .rt-pill.miss { background:#fee2e2; color:#991b1b; }
+  /* Dotted-border variants for RT-populated fields */
+  .field-group input.rt-high,   .field-group select.rt-high   { border:2px dashed #1a7a4a; background:#f0faf4; }
+  .field-group input.rt-medium, .field-group select.rt-medium { border:2px dashed #d97706; background:#fffbeb; }
+  .field-group input.rt-low,    .field-group select.rt-low    { border:2px dashed #dc2626; background:#fff5f5; }
+  /* Confirm fields action bar */
+  .confirm-fields-bar { display:flex; align-items:center; gap:10px; margin-top:12px; padding:7px 10px; background:#f8f8f6; border:1px solid #e5e5e0; border-radius:6px; }
 
   /* ── Modal section divider ───────────────────────────────── */
   .modal-divider { height: 1px; background: #e5e5e0; margin: 16px 0; }
@@ -279,6 +322,87 @@
   .pipeline-bar-wrap { height: 10px; background: #e5e5e0; border-radius: 5px; overflow: hidden; margin-top: 10px; }
   .pipeline-bar-fill { height: 100%; background: linear-gradient(90deg, #1a7a4a, #22c55e); border-radius: 5px; transition: width 0.5s ease; width: 0%; }
   @keyframes psDotPulse { 0%,100%{opacity:1} 50%{opacity:0.45} }
+
+  /* ── Gear menu ──────────────────────────────────────────────── */
+  .gear-wrap { position: relative; }
+  .gear-btn { background: none; border: none; color: #888; font-size: 17px; cursor: pointer; padding: 3px 6px; border-radius: 4px; line-height: 1; transition: color 0.12s, background 0.12s; }
+  .gear-btn:hover { color: #fff; background: rgba(255,255,255,0.12); }
+  .gear-dropdown { display: none; position: absolute; right: 0; top: calc(100% + 8px); background: #fff; border: 1px solid #d0d0c8; border-radius: 8px; box-shadow: 0 6px 20px rgba(0,0,0,.22); min-width: 210px; z-index: 500; overflow: hidden; }
+  .gear-dropdown.open { display: block; }
+  .gear-item { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 14px; background: none; border: none; border-bottom: 1px solid #f0f0e8; text-align: left; font-size: 13px; font-family: inherit; cursor: pointer; color: #1a1a1a; }
+  .gear-item:last-child { border-bottom: none; }
+  .gear-item:hover { background: #f0faf4; color: #1a7a4a; }
+  .gear-item.danger:hover { background: #fef2f2; color: #991b1b; }
+
+  /* ── Toast notification ─────────────────────────────────────── */
+  .toast { position: fixed; bottom: 24px; right: 24px; padding: 10px 18px; border-radius: 8px; font-size: 13px; font-weight: 500; color: #fff; z-index: 9999; opacity: 0; transform: translateY(8px); transition: opacity 0.2s, transform 0.2s; pointer-events: none; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: #1a7a4a; }
+  .toast.error   { background: #991b1b; }
+  .toast.info    { background: #1d4ed8; }
+
+  /* ── Mobile (≤768px) ─────────────────────────────────────── */
+  @media (max-width: 768px) {
+    /* Single-column layout */
+    .main { grid-template-columns: 1fr; padding: 8px 12px; gap: 10px; }
+
+    /* Header wraps on narrow screens */
+    .header { padding: 10px 12px; flex-wrap: wrap; gap: 8px; }
+    .header h1 { font-size: 14px; }
+    .header > div { flex-wrap: wrap; gap: 6px; }
+
+    /* Status indicators wrap */
+    .sync-indicator { font-size: 11px; }
+
+    /* Stats bar wraps */
+    .stats-bar { padding: 8px 12px; flex-wrap: wrap; gap: 10px; }
+    .stat-divider { display: none; }
+    .stat-value { font-size: 17px; }
+
+    /* Touch-friendly button minimum 44px height */
+    .btn { min-height: 44px; padding: 10px 14px; }
+    .btn.sm { min-height: 44px; padding: 10px 12px; font-size: 13px; }
+    .add-tab { min-height: 44px; padding: 10px 16px; }
+    .gear-btn { min-height: 44px; min-width: 44px; font-size: 20px; }
+    .q-card-actions .btn { min-height: 36px; }
+
+    /* Filter bar stacks vertically */
+    .filter-row-1 { flex-wrap: wrap; }
+    .filter-row-1 select { flex: 1 1 calc(50% - 4px); min-width: 120px; height: 40px; font-size: 13px; }
+    .filter-row-2 { flex-wrap: wrap; }
+    .filter-row-2 input[type="date"],
+    .filter-row-2 input[type="text"],
+    .filter-row-2 input:not([type]) { height: 40px; font-size: 13px; }
+    .filter-amt-wrap { height: 40px; }
+    .filter-amt-wrap input { font-size: 13px; }
+
+    /* Status message bar padding */
+    #status-msg-bar { padding: 6px 12px; font-size: 12px; }
+
+    /* Card padding */
+    .card { padding: 12px; border-radius: 8px; }
+
+    /* Browse panel buttons wrap naturally */
+    #tab-browse > div:first-child { gap: 6px; }
+
+    /* File browser takes more vertical space on mobile */
+    .file-browser { min-height: 220px; }
+  }
+
+  /* ── Modal full-screen on mobile ────────────────────────── */
+  @media (max-width: 768px) {
+    .modal-backdrop { align-items: flex-end; }
+    .modal {
+      width: 100vw;
+      max-width: 100vw;
+      max-height: 100vh;
+      border-radius: 0;
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+    }
+    .modal-body { -webkit-overflow-scrolling: touch; }
+    .field-row { grid-template-columns: 1fr; }
+  }
 </style>
 </head>
 <body>
@@ -286,30 +410,54 @@
 <!-- ── Header ─────────────────────────────────────────────── -->
 <div class="header">
   <h1>SCANNER MVP</h1>
-  <div style="display:flex;align-items:center;gap:16px;">
-    <!-- Incoming Folder indicator -->
-    <div class="sync-indicator" id="incoming-indicator" title="D:/Scans/Incoming folder status">
+  <div style="display:flex;align-items:center;gap:14px;">
+    <!-- 📂 Incoming -->
+    <div class="sync-indicator" id="incoming-indicator" title="D:/Scans/Incoming folder accessibility">
       <span class="sync-dot offline" id="incoming-dot"></span>
-      <span id="incoming-label">Incoming</span>
+      <span>📂 Incoming</span>
     </div>
-    <!-- Share Drive sync indicator -->
-    <div class="sync-indicator" id="sync-indicator" title="Google Drive sync status">
+    <!-- 💾 D: Drive (local cache) -->
+    <div class="sync-indicator" id="ext-hdd-indicator" title="D: drive (external HDD) local cache availability">
+      <span class="sync-dot offline" id="ext-hdd-dot"></span>
+      <span>💾 Local</span>
+    </div>
+    <!-- ☁️ Drive -->
+    <div class="sync-indicator" id="sync-indicator" title="Google Drive API connection">
       <span class="sync-dot unconfigured" id="sync-dot"></span>
-      <span id="sync-label">Share Drive</span>
-      <button class="sync-retry-btn" id="sync-retry-btn" style="display:none" onclick="retrySyncUploads()">Retry</button>
+      <span>☁️ Drive</span>
     </div>
-    <!-- Synced indicator -->
-    <div class="sync-indicator" id="cloudlocal-indicator" title="Combined cloud and local sync status">
+    <!-- 🔄 Synced (upload queue state) -->
+    <div class="sync-indicator" id="cloudlocal-indicator" title="Upload queue status">
       <span class="sync-dot offline" id="cloudlocal-dot"></span>
-      <span id="cloudlocal-label">Synced</span>
+      <span>🔄 Synced</span>
     </div>
-    <!-- Claude API indicator -->
-    <div class="sync-indicator" id="api-indicator" title="Claude API status">
+    <!-- 📁 Temp storage (only shown when files are stranded there) -->
+    <div class="sync-indicator" id="temp-indicator" title="Files in Temp storage — D: was unavailable at filing time" style="display:none">
+      <span class="sync-dot syncing" id="temp-dot"></span>
+      <span>📁 Temp&nbsp;(<span id="temp-count">0</span>)</span>
+    </div>
+    <!-- ✳️ Claude API -->
+    <div class="sync-indicator" id="api-indicator" title="Claude API key status">
       <span class="sync-dot offline" id="api-dot"></span>
-      <span id="api-label">Claude API</span>
+      <span>✳️ Claude API</span>
+    </div>
+    <!-- ⚙️ Gear menu -->
+    <div class="gear-wrap">
+      <button class="gear-btn" id="gear-btn" onclick="toggleGearMenu(event)" title="Settings">⚙️</button>
+      <div class="gear-dropdown" id="gear-dropdown">
+        <button class="gear-item" onclick="runSyncAudit();closeGearMenu()">⟳&nbsp; Run Sync Audit</button>
+        <button class="gear-item" onclick="forceBackupNow();closeGearMenu()">💾&nbsp; Force Backup Now</button>
+        <button class="gear-item" id="import-from-temp-btn" onclick="importFromTemp();closeGearMenu()" style="display:none">📁&nbsp; Import from Temp</button>
+        <button class="gear-item" onclick="exportMasterLog();closeGearMenu()">📊&nbsp; Export Master Log</button>
+        <button class="gear-item danger" onclick="flushDocuments();closeGearMenu()">🚽&nbsp; Flush Documents</button>
+        <button class="gear-item danger" onclick="fullSystemReset();closeGearMenu()">☠️&nbsp; Full System Reset</button>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- ── Contextual status message ──────────────────────────── -->
+<div id="status-msg-bar" style="display:none;background:#111;border-bottom:1px solid #2a2a2a;padding:4px 24px;font-size:11px;color:#aaa;font-style:italic;"></div>
 
 <!-- ── Summary Stats Bar ──────────────────────────────────── -->
 <div class="stats-bar">
@@ -375,7 +523,10 @@
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           <p>Drag &amp; drop or click to browse</p>
           <p style="font-size:11px;margin-top:4px;">PDF, JPG, PNG, HEIC</p>
-          <input type="file" id="file-input" multiple accept=".pdf,.jpg,.jpeg,.png,.heic" onchange="handleFileSelect(this.files)">
+          <input type="file" id="file-input" multiple
+                 accept=".pdf,.jpg,.jpeg,.png,.heic,image/*"
+                 capture="environment"
+                 onchange="handleFileSelect(this.files)">
         </div>
         <div style="display:flex;justify-content:flex-end;">
           <button class="btn sm green" onclick="document.getElementById('file-input').click()">Add To Queue</button>
@@ -385,7 +536,8 @@
       <!-- Tab 2: Browse Files -->
       <div class="add-tab-pane active" id="tab-browse">
         <div style="display:flex;gap:4px;flex-wrap:wrap;">
-          <button class="btn sm" onclick="loadBrowserFolder('D:/Scans/Incoming')"         title="Incoming Scans">📥 Incoming Scans</button>
+          <button class="btn sm" id="incoming-scans-btn" onclick="loadBrowserFolder('D:/Scans/Incoming')" title="Incoming Scans">📥 Incoming Scans</button>
+          <button class="btn sm" id="temp-incoming-btn" onclick="loadBrowserFolder('C:/Scanner_MVP_Temp/Incoming')" title="Temp Incoming — D: drive not connected" style="display:none">📥 Temp Incoming</button>
           <span id="drive-buttons"></span>
           <button class="btn sm" onclick="loadBrowserFolder('C:/Users/frase/Downloads')"  title="Downloads">⬇ Downloads</button>
           <button class="btn sm" onclick="loadBrowserFolder('D:/PropertyMedia')"          title="Property Media">🏠 Property Media</button>
@@ -490,29 +642,53 @@
 
       <!-- Filter bar -->
       <div class="filter-bar">
-        <span class="filter-label">Filter:</span>
-        <select id="filter-search" onchange="applyFilters()" title="Filter by vendor">
-          <option value="">All vendors</option>
-        </select>
-        <select id="filter-property" onchange="applyFilters()" title="Filter by property">
-          <option value="">All properties</option>
-        </select>
-        <span class="filter-divider"></span>
-        <span class="filter-label">Date:</span>
-        <input type="date" id="filter-date-from" class="date-input" oninput="applyFilters()" title="From date">
-        <input type="date" id="filter-date-to"   class="date-input" oninput="applyFilters()" title="To date">
-        <span class="filter-divider"></span>
-        <span class="filter-label">$:</span>
-        <input id="filter-amt-min" class="amount-input" placeholder="Min" oninput="applyFilters()" title="Min amount">
-        <input id="filter-amt-max" class="amount-input" placeholder="Max" oninput="applyFilters()" title="Max amount">
-        <select id="filter-status" onchange="applyFilters()" title="Payment status">
-          <option value="">All statuses</option>
-          <option value="unpaid">Unpaid</option>
-          <option value="paid">Paid</option>
-          <option value="overdue">Overdue</option>
-          <option value="partial">Partial</option>
-        </select>
-        <button class="btn sm" onclick="clearFilters()" title="Clear all filters">✕ Clear</button>
+        <!-- Row 1: dropdowns evenly distributed -->
+        <div class="filter-row-1">
+          <select id="filter-search" onchange="applyFilters()" title="Filter by vendor">
+            <option value="">All Vendors</option>
+          </select>
+          <select id="filter-property" onchange="applyFilters()" title="Filter by property">
+            <option value="">All Properties</option>
+          </select>
+          <select id="filter-status" onchange="applyFilters()" title="Filter by status">
+            <option value="">All Statuses</option>
+            <option value="unpaid">Unpaid</option>
+            <option value="paid">Paid</option>
+            <option value="overdue">Overdue</option>
+            <option value="partial">Partial</option>
+          </select>
+          <select id="filter-sort" onchange="_syncColSortFromDropdown();applyFilters()" title="Sort order">
+            <option value="bill_date_desc">Sort: Bill Date ↓</option>
+            <option value="bill_date_asc">Sort: Bill Date ↑</option>
+            <option value="filed_date_desc">Sort: Filed Date ↓</option>
+            <option value="filed_date_asc">Sort: Filed Date ↑</option>
+            <option value="amount_desc">Sort: Amount ↓</option>
+            <option value="amount_asc">Sort: Amount ↑</option>
+            <option value="vendor_az">Sort: Vendor A → Z</option>
+            <option value="vendor_za">Sort: Vendor Z → A</option>
+            <option value="property_az">Sort: Property A → Z</option>
+            <option value="property_za">Sort: Property Z → A</option>
+            <option value="unit_az">Sort: Unit A → Z</option>
+            <option value="unit_za">Sort: Unit Z → A</option>
+            <option value="status_az">Sort: Status A → Z</option>
+            <option value="status_za">Sort: Status Z → A</option>
+          </select>
+        </div>
+        <!-- Row 2: amount group | divider | date group | clear -->
+        <div class="filter-row-2">
+          <div class="filter-amt-wrap">
+            <input id="filter-amt-min" placeholder="$ Min" oninput="applyFilters()" title="Min amount">
+          </div>
+          <span class="filter-sep">–</span>
+          <div class="filter-amt-wrap">
+            <input id="filter-amt-max" placeholder="$ Max" oninput="applyFilters()" title="Max amount">
+          </div>
+          <span class="filter-vdiv"></span>
+          <input type="date" id="filter-date-from" oninput="applyFilters()" title="From date">
+          <span class="filter-sep">–</span>
+          <input type="date" id="filter-date-to" oninput="applyFilters()" title="To date">
+          <button class="btn sm" onclick="clearFilters()" title="Clear all filters" style="margin-left:auto;">✕ Clear</button>
+        </div>
       </div>
 
       <div id="recent-list">
@@ -652,6 +828,10 @@
   // ── Startup ──────────────────────────────────────────────────
   window.addEventListener('DOMContentLoaded', () => {
     ensureCanonicalValues();
+    // On touch devices drag & drop doesn't work — relabel to clarify camera upload is the action
+    if ('ontouchstart' in window) {
+      document.getElementById('tab-btn-dragdrop').textContent = 'Upload / Camera';
+    }
     refreshStatus();
     refreshQueue();
     refreshActivity();
@@ -692,66 +872,218 @@
     if (oc) oc.textContent = s.overdue_count != null ? s.overdue_count : '0';
   }
 
-  // ── Shared state for combined Cloud & Local indicator ────────
-  let _lastSyncStatus  = 'unconfigured';
-  let _lastIncomingOk  = false;
+  // ── Shared status state (drives contextual message bar) ─────
+  const _sState = { extHddOk: false, driveOk: false, syncedCls: 'offline', pendingCount: 0, tempCount: 0, prevDDriveOk: null };
 
-  function _updateCloudLocalIndicator() {
-    const dot = document.getElementById('cloudlocal-dot');
-    if (!dot) return;
-    let cls;
-    if (_lastSyncStatus === 'synced' && _lastIncomingOk) {
-      cls = 'synced';          // green — everything ok
-    } else if (_lastSyncStatus === 'failed' || _lastSyncStatus === 'offline' || !_lastIncomingOk) {
-      cls = 'failed';          // red — something is down
-    } else if (_lastSyncStatus === 'syncing') {
-      cls = 'syncing';         // yellow — in progress
-    } else {
-      cls = 'offline';         // gray — unconfigured / unknown
+  function _updateStatusMessage() {
+    const bar = document.getElementById('status-msg-bar');
+    if (!bar) return;
+    const { extHddOk, driveOk, syncedCls, pendingCount } = _sState;
+    let msg = '';
+    if (!extHddOk && driveOk) {
+      msg = '📡 No local drive — filing to cloud · sync on reconnect';
+    } else if (extHddOk && !driveOk) {
+      msg = '💾 Cloud offline — saving locally';
+    } else if (!extHddOk && !driveOk) {
+      msg = '⚠️ D: drive offline — filing to Temp · use 📥 Temp Incoming for new scans';
+    } else if (syncedCls === 'syncing' || syncedCls === 'failed') {
+      const n = pendingCount;
+      msg = `🔄 ${n > 0 ? n + ' ' : ''}file${n !== 1 ? 's' : ''} pending sync`;
     }
-    dot.className = 'sync-dot ' + cls;
+    bar.textContent = msg;
+    bar.style.display = msg ? '' : 'none';
   }
 
-  // ── Shared Drive indicator ────────────────────────────────────
-  const _SYNC_CONFIG = {
-    synced      : { dot: 'synced',       },
-    syncing     : { dot: 'syncing',      },
-    failed      : { dot: 'failed',       },
-    offline     : { dot: 'offline',      },
-    unconfigured: { dot: 'unconfigured', },
-  };
-
+  // ── Drive sync status ────────────────────────────────────────
   async function refreshSyncStatus() {
     const s = await fetch('/api/sync-status').then(r => r.json()).catch(() => null);
     if (!s) return;
-    _lastSyncStatus = s.status;
-    const cfg      = _SYNC_CONFIG[s.status] || _SYNC_CONFIG.unconfigured;
-    const dot      = document.getElementById('sync-dot');
-    const label    = document.getElementById('sync-label');
-    const retryBtn = document.getElementById('sync-retry-btn');
-    if (!dot) return;
 
-    dot.className = 'sync-dot ' + cfg.dot;
-    let labelText = 'Share Drive';
-    if (s.pending_count > 0) labelText += ` (${s.pending_count})`;
-    label.textContent = labelText;
+    // ☁️ Drive dot — green if API is configured + not offline, red otherwise
+    const driveDot = document.getElementById('sync-dot');
+    const driveInd = document.getElementById('sync-indicator');
+    const driveOk  = s.configured && s.status !== 'unconfigured' && s.status !== 'offline';
+    if (driveDot) {
+      driveDot.className = 'sync-dot ' + (driveOk ? 'synced' : (s.configured ? 'failed' : 'unconfigured'));
+      if (driveInd) driveInd.title = s.last_error ? `Drive — error: ${s.last_error}` : 'Google Drive API connection';
+    }
+    _sState.driveOk = driveOk;
 
-    // Show retry button only when there are failed/offline pending items
-    retryBtn.style.display = (s.pending_count > 0 && ['failed','offline'].includes(s.status))
-      ? '' : 'none';
+    // 🔄 Synced dot — green=empty queue, yellow=uploading/pending, red=failed
+    const syncedDot = document.getElementById('cloudlocal-dot');
+    let syncedCls;
+    if (s.status === 'failed') {
+      syncedCls = 'failed';
+    } else if (s.pending_count > 0 || s.status === 'syncing') {
+      syncedCls = 'syncing';   // yellow
+    } else if (s.status === 'synced') {
+      syncedCls = 'synced';    // green
+    } else {
+      syncedCls = 'offline';   // gray — unconfigured / unknown
+    }
+    if (syncedDot) syncedDot.className = 'sync-dot ' + syncedCls;
+    _sState.syncedCls    = syncedCls;
+    _sState.pendingCount = s.pending_count || 0;
 
-    // Tooltip: show last error if any
-    const indicator = document.getElementById('sync-indicator');
-    indicator.title = s.last_error
-      ? `Google Drive sync — last error: ${s.last_error}`
-      : 'Google Drive sync status';
-
-    _updateCloudLocalIndicator();
+    _updateStatusMessage();
   }
 
-  async function retrySyncUploads() {
-    await fetch('/api/sync-retry', {method:'POST'}).catch(() => null);
-    refreshSyncStatus();
+  // ── Gear menu ─────────────────────────────────────────────────
+  function toggleGearMenu(e) {
+    e.stopPropagation();
+    document.getElementById('gear-dropdown').classList.toggle('open');
+  }
+  function closeGearMenu() {
+    document.getElementById('gear-dropdown').classList.remove('open');
+  }
+  document.addEventListener('click', closeGearMenu);
+
+  async function importFromTemp() {
+    try {
+      const r = await fetch('/api/import-from-temp', {method:'POST'}).then(r => r.json());
+      if (r.ok) {
+        const n = r.moved || 0;
+        showToast(
+          n > 0 ? `${n} file${n > 1 ? 's' : ''} moved from Temp to D: drive` : 'No files to import',
+          n > 0 ? 'success' : 'info'
+        );
+        refreshStatus();
+        refreshSyncStatus();
+      } else {
+        showToast(r.error || 'Import from Temp failed', 'error');
+      }
+    } catch(e) {
+      showToast('Import from Temp failed', 'error');
+    }
+  }
+
+  function runSyncAudit() {
+    showToast('Coming soon', 'info');
+  }
+  function forceBackupNow() {
+    fetch('/api/sync-retry', {method:'POST'})
+      .then(() => { showToast('Backup queued', 'success'); refreshSyncStatus(); })
+      .catch(() => showToast('Error queuing backup', 'error'));
+  }
+  async function flushDocuments() {
+    const confirmed = await showConfirmModal({
+      title: '🚽 Flush Documents',
+      body: `<p>This will permanently delete all records from the master log and move all filed PDFs to <code>D:/Scans/Deleted/</code>.</p>
+             <p style="margin-top:10px;"><strong>Your Reference Table (vendors and accounts) will NOT be affected.</strong> Use this when you want a clean slate for documents but keep your vendor data intact.</p>`,
+      confirmLabel: 'Flush Documents',
+      confirmClass: 'danger',
+      requireTyped: null,
+    });
+    if (!confirmed) return;
+    fetch('/api/flush-records', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({confirm_token: 'CONFIRM_FLUSH', reset_reference_table: false}),
+    }).then(r => r.json()).then(d => {
+      if (d.ok) {
+        showToast(`Flushed: ${d.records_deleted} records, ${d.files_moved} files moved`, 'success');
+        refreshRecent();
+        refreshStats();
+      } else {
+        showToast('Flush failed: ' + (d.error || '?'), 'error');
+      }
+    }).catch(() => showToast('Error flushing documents', 'error'));
+  }
+
+  async function fullSystemReset() {
+    const confirmed = await showConfirmModal({
+      title: '☠️ Full System Reset',
+      body: `<p>This will permanently delete <strong>everything</strong>:</p>
+             <ul style="margin:10px 0 10px 16px;line-height:2;">
+               <li>All records from the master log</li>
+               <li>All filed PDFs moved to <code>D:/Scans/Deleted/</code></li>
+               <li><strong>All vendor and account data from the Reference Table</strong></li>
+             </ul>
+             <p style="color:#991b1b;font-weight:500;">This cannot be undone. You will need to rebuild your vendor list from scratch.</p>
+             <p style="margin-top:10px;">Type <strong>RESET</strong> below to confirm:</p>`,
+      confirmLabel: '☠️ Full System Reset',
+      confirmClass: 'danger',
+      requireTyped: 'RESET',
+    });
+    if (!confirmed) return;
+    fetch('/api/flush-records', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({confirm_token: 'CONFIRM_FLUSH', reset_reference_table: true}),
+    }).then(r => r.json()).then(d => {
+      if (d.ok) {
+        showToast(`Full reset complete: ${d.records_deleted} records, ${d.files_moved} files moved`, 'success');
+        refreshRecent();
+        refreshStats();
+      } else {
+        showToast('Reset failed: ' + (d.error || '?'), 'error');
+      }
+    }).catch(() => showToast('Error during reset', 'error'));
+  }
+
+  // ── Reusable confirm modal ────────────────────────────────────
+  function showConfirmModal({ title, body, confirmLabel = 'Confirm', confirmClass = '', requireTyped = null }) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:300;display:flex;align-items:center;justify-content:center;padding:16px;';
+
+      const box = document.createElement('div');
+      box.style.cssText = 'background:#fff;border-radius:12px;width:520px;max-width:100%;padding:24px;box-shadow:0 24px 64px rgba(0,0,0,0.4);font-size:13px;';
+
+      const typedHtml = requireTyped
+        ? `<div style="margin-top:14px;">
+             <input id="scm-typed" type="text" placeholder="Type ${requireTyped} to confirm"
+                    style="width:100%;padding:7px 10px;border:1px solid #d0d0c8;border-radius:6px;font-size:13px;font-family:inherit;">
+           </div>`
+        : '';
+
+      const btnCls = confirmClass === 'danger' ? 'btn danger' : 'btn green';
+      box.innerHTML = `
+        <h3 style="font-size:15px;font-weight:600;margin-bottom:12px;">${title}</h3>
+        <div style="color:#555;line-height:1.6;">${body}</div>
+        ${typedHtml}
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;">
+          <button id="scm-cancel"  class="btn" style="min-width:80px;">Cancel</button>
+          <button id="scm-confirm" class="${btnCls}" style="min-width:160px;"${requireTyped ? ' disabled' : ''}>${confirmLabel}</button>
+        </div>
+      `;
+
+      overlay.appendChild(box);
+      document.body.appendChild(overlay);
+
+      if (requireTyped) {
+        const inp = box.querySelector('#scm-typed');
+        const btn = box.querySelector('#scm-confirm');
+        inp.addEventListener('input', () => { btn.disabled = inp.value !== requireTyped; });
+        setTimeout(() => inp.focus(), 0);
+      }
+
+      const dismiss = (result) => { overlay.remove(); resolve(result); };
+      box.querySelector('#scm-cancel').onclick  = () => dismiss(false);
+      box.querySelector('#scm-confirm').onclick = () => dismiss(true);
+      overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(false); });
+    });
+  }
+  function exportMasterLog() {
+    window.location.href = '/api/export-master-log';
+  }
+
+  // ── Toast ──────────────────────────────────────────────────────
+  let _toastTimer = null;
+  function showToast(msg, type = 'info') {
+    let el = document.getElementById('app-toast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'app-toast';
+      el.className = 'toast';
+      document.body.appendChild(el);
+    }
+    el.textContent = msg;
+    el.className = `toast ${type}`;
+    void el.offsetWidth; // force reflow
+    el.classList.add('show');
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
   }
 
   // ── New scan badge ────────────────────────────────────────────
@@ -772,27 +1104,58 @@
     document.getElementById('new-scan-badge').classList.remove('visible');
   }
 
-  // ── Status (Claude API dot only) ─────────────────────────────
+  // ── Status (Claude API + Local Storage dots) ────────────────
   async function refreshStatus() {
     const r = await fetch('/api/status').then(r => r.json()).catch(() => null);
     if (!r) return;
-    const apiDot   = document.getElementById('api-dot');
-    const apiLabel = document.getElementById('api-label');
-    if (apiDot) {
-      apiDot.className     = 'sync-dot ' + (r.api_key_loaded ? 'synced' : 'failed');
-      apiLabel.textContent = 'Claude API';
+    const apiDot = document.getElementById('api-dot');
+    if (apiDot) apiDot.className = 'sync-dot ' + (r.api_key_loaded ? 'synced' : 'failed');
+    const extDot = document.getElementById('ext-hdd-dot');
+    // D: drive: green=available, gray=not connected (absence is normal, not an error)
+    const dDriveOk = !!r.d_drive_ok;
+    if (extDot) extDot.className = 'sync-dot ' + (dDriveOk ? 'synced' : 'offline');
+
+    // If D: just went offline, redirect browser panel away from any D: path
+    if (_sState.prevDDriveOk === true && !dDriveOk) {
+      const pathBar = document.getElementById('browser-path-bar');
+      if (pathBar && pathBar.textContent.trim().toUpperCase().startsWith('D:')) {
+        loadBrowserFolder('C:/Scanner_MVP_Temp/Incoming');
+      }
     }
+    _sState.prevDDriveOk = dDriveOk;
+    _sState.extHddOk = dDriveOk;
+
+    // Incoming Scans button: gray + disabled when D: offline; show Temp Incoming instead
+    const incomingBtn    = document.getElementById('incoming-scans-btn');
+    const tempIncomingBtn = document.getElementById('temp-incoming-btn');
+    if (incomingBtn) {
+      incomingBtn.disabled = !dDriveOk;
+      incomingBtn.title    = dDriveOk ? 'Incoming Scans' : 'External drive not connected';
+      incomingBtn.style.opacity = dDriveOk ? '' : '0.45';
+      incomingBtn.style.cursor  = dDriveOk ? '' : 'not-allowed';
+    }
+    if (tempIncomingBtn) tempIncomingBtn.style.display = dDriveOk ? 'none' : '';
+
+    // 📁 Temp indicator — show when files are stranded in C:/Scanner_MVP_Temp
+    const tempCount  = r.temp_count || 0;
+    const tempInd    = document.getElementById('temp-indicator');
+    const tempSpan   = document.getElementById('temp-count');
+    const importBtn  = document.getElementById('import-from-temp-btn');
+    if (tempInd)  tempInd.style.display  = tempCount > 0 ? '' : 'none';
+    if (tempSpan) tempSpan.textContent    = tempCount;
+    if (importBtn) importBtn.style.display = tempCount > 0 ? '' : 'none';
+    _sState.tempCount = tempCount;
+
+    _updateStatusMessage();
   }
 
   // ── Incoming Folder indicator + badge check ──────────────────
   async function checkIncomingFolder() {
-    const dot  = document.getElementById('incoming-dot');
+    const dot = document.getElementById('incoming-dot');
     if (!dot) return;
     const data = await fetch('/api/browse-folder?path=D:/Scans/Incoming').then(r => r.json()).catch(() => null);
     const ok   = data && !data.error;
-    _lastIncomingOk   = ok;
-    dot.className     = 'sync-dot ' + (ok ? 'synced' : 'failed');
-    _updateCloudLocalIndicator();
+    dot.className = 'sync-dot ' + (ok ? 'synced' : 'failed');
     if (ok && data.items) {
       const pdfNames = data.items
         .filter(i => i.type === 'file' && (i.ext || '').toLowerCase() === '.pdf')
@@ -839,11 +1202,14 @@
 
     // Render all detected drives in order
     drives.forEach(d => {
-      const label = d.label ? `${d.letter}: ${d.label}` : `${d.letter}:`;
+      // E: always labelled "E: USB" regardless of detected volume name
+      const label = d.letter === 'E' ? 'E: USB'
+                  : d.label          ? `${d.letter}: ${d.label}`
+                  :                    `${d.letter}:`;
       const btn = document.createElement('button');
       btn.className = 'btn sm';
       btn.title = `${d.letter}: Drive`;
-      btn.textContent = '💾 ' + label;
+      btn.textContent = '📂 ' + label;
       btn.onclick = () => loadBrowserFolder(d.path);
       container.appendChild(btn);
     });
@@ -853,7 +1219,7 @@
       const ghost = document.createElement('button');
       ghost.className = 'btn sm';
       ghost.title = 'Insert USB drive to enable';
-      ghost.textContent = '💾 E: USB';
+      ghost.textContent = '📂 E: USB';
       ghost.disabled = true;
       ghost.style.cssText = 'border-style:dashed;opacity:0.45;color:#888;cursor:default;';
       container.appendChild(ghost);
@@ -881,8 +1247,14 @@
       if (resp.ok) {
         data = await resp.json();
       } else {
-        const txt = await resp.text().catch(() => '');
-        data = { error: `Server error ${resp.status}${txt ? ': ' + txt.slice(0, 120) : ''}` };
+        // Try to extract a JSON error body (e.g. 503 D: not connected)
+        const json = await resp.json().catch(() => null);
+        if (json && json.error) {
+          data = { error: json.error, path: json.path || path, items: [] };
+        } else {
+          const txt = await resp.text().catch(() => '');
+          data = { error: `Server error ${resp.status}${txt ? ': ' + txt.slice(0, 120) : ''}` };
+        }
       }
     } catch (err) {
       data = { error: 'Network error — is the server running? (' + err.message + ')' };
@@ -1011,7 +1383,15 @@
     }
     const pathBar = document.getElementById('browser-path-bar');
     if (pathBar) loadBrowserFolder(pathBar.textContent);
-    if (skipped > 0) alert(skipped + ' file(s) skipped — already processed.');
+    if (skipped > 0) {
+      await showConfirmModal({
+        title: 'Files Skipped',
+        body: `<p>${skipped} file${skipped > 1 ? 's' : ''} skipped — already processed.</p>`,
+        confirmLabel: 'OK',
+        confirmClass: '',
+        requireTyped: null,
+      });
+    }
   }
 
   // ── Queue ─────────────────────────────────────────────────────
@@ -1103,7 +1483,13 @@
       const r = await fetch('/api/queue/upload', {method:'POST', body:fd})
         .then(r => r.json()).catch(() => null);
       if (r && r.duplicate_source) {
-        alert('"' + file.name + '" was already processed — skipping.');
+        await showConfirmModal({
+          title: 'File Skipped',
+          body: `<p><strong>${esc(file.name)}</strong> was already processed — skipping.</p>`,
+          confirmLabel: 'OK',
+          confirmClass: '',
+          requireTyped: null,
+        });
       }
     }
     refreshQueue();
@@ -1294,7 +1680,6 @@
     refreshQueue();
     refreshActivity();
     refreshStats();
-    if (outcome === 'review') openReview(filename);
   }
 
   function showProgress(pct, label) {
@@ -1337,6 +1722,59 @@
   function confClass(result, field) {
     const c = (result.field_confidence || {})[field] || '';
     return c ? 'conf-' + c : '';
+  }
+
+  // ── RT banner helpers ─────────────────────────────────────────
+  function _rtState(r) {
+    const fields   = r._reference_match_fields || [];
+    const count    = fields.length;
+    const hasVendor  = fields.includes('vendor_name');
+    const hasAcct    = fields.includes('account_number');
+    const hasAddress = fields.includes('service_address');
+    let state;
+    if (!r._reference_match || count === 0) state = 'none';
+    else if (count >= 3) state = 'full';
+    else if (count >= 2) state = 'partial';
+    else state = 'weak';
+    return { state, count, hasVendor, hasAcct, hasAddress };
+  }
+
+  function _buildBanner(r) {
+    const { state, hasVendor, hasAcct, hasAddress } = _rtState(r);
+    const dotClass = state;
+    const pill = (label, hit) =>
+      `<span class="rt-pill ${hit ? 'hit' : 'miss'}">${hit ? '✓' : '✗'} ${label}</span>`;
+    const msgs = {
+      full:    'Reference table match — static fields confirmed.',
+      partial: 'Partial match — some static fields confirmed.',
+      weak:    'Weak match — review static fields carefully.',
+      none:    'No reference table match — filling manually.',
+    };
+    return `<div id="rt-match-banner" class="ref-match-banner rt-${state}">
+      <span class="rt-dot ${dotClass}"></span>
+      <span>${msgs[state]}</span>
+      <span style="display:flex;gap:4px;margin-left:auto;">
+        ${pill('Vendor', hasVendor)}${pill('Acct#', hasAcct)}${pill('Address', hasAddress)}
+      </span>
+    </div>`;
+  }
+
+  // For RT-populated static fields: dotted border; for Claude-only: solid border.
+  // Uses the worst signal of RT match quality vs Claude field confidence.
+  function _fieldClass(r, confField) {
+    const rtFields = r._reference_match_fields || [];
+    if (r._reference_match && rtFields.length > 0) {
+      const rtCount = rtFields.length;
+      const rtLevel = rtCount >= 3 ? 'high' : rtCount >= 2 ? 'medium' : 'low';
+      const rank    = { high: 3, medium: 2, low: 1 };
+      const claudeConf = ((r.field_confidence || {})[confField] || '');
+      const rtScore    = rank[rtLevel];
+      const claudeScore = claudeConf ? rank[claudeConf] : null;
+      const worst = claudeScore !== null ? Math.min(rtScore, claudeScore) : rtScore;
+      const worstLevel = worst >= 3 ? 'high' : worst >= 2 ? 'medium' : 'low';
+      return 'rt-' + worstLevel;
+    }
+    return confClass(r, confField);
   }
 
   function esc(s) {
@@ -1398,13 +1836,31 @@
         const prefix  = selectId.startsWith('f-') ? 'f-' : 'ed-';
         const propEl  = document.getElementById(prefix + 'property');
         const prop    = propEl ? propEl.value : '';
-        if (!prop) { alert('Please select a property first.'); return; }
+        if (!prop) {
+          await showConfirmModal({
+            title: 'No Property Selected',
+            body: '<p>Please select a property before adding a unit.</p>',
+            confirmLabel: 'OK',
+            confirmClass: '',
+            requireTyped: null,
+          });
+          return;
+        }
         const res = await fetch('/api/config/add-unit', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
           body: JSON.stringify({property: prop, unit: trimmed}),
         }).then(r => r.json()).catch(() => null);
-        if (!res || !res.ok) { alert('Failed to save new unit.'); return; }
+        if (!res || !res.ok) {
+          await showConfirmModal({
+            title: '❌ Failed to Save Unit',
+            body: `<p>${res?.error || 'Could not save the new unit.'}</p>`,
+            confirmLabel: 'OK',
+            confirmClass: '',
+            requireTyped: null,
+          });
+          return;
+        }
         _cvPromise = null;
         await ensureCanonicalValues();
         el.outerHTML = buildUnitSelect(selectId, prop, trimmed);
@@ -1469,14 +1925,11 @@
     const status = (r.payment_status || 'unpaid').toLowerCase();
     const isOverdue = due && due < today && status === 'unpaid';
 
-    const refBanner = r._reference_match ? `
-      <div class="ref-match-banner">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#1a7a4a" stroke-width="2.5">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 13.01 9 10.01"/>
-        </svg>
-        <strong>Reference table match</strong> — vendor, account &amp; address confirmed.
-        ${r._reference_match_fields ? `<span style="margin-left:auto;color:#1a7a4a;opacity:0.7;font-size:11px;">${r._reference_match_fields.join(', ')}</span>` : ''}
-      </div>` : '';
+    const _isMealsEnt = ['meals', 'entertainment'].includes((r.vendor_category || '').toLowerCase());
+    const defaultPaymentStatus = (r.document_type === 'receipt') ? 'paid' : (r.payment_status || 'unpaid');
+    const defaultBillingFreq   = _isMealsEnt ? (r.billing_frequency || 'Random') : (r.billing_frequency || '');
+
+    const refBanner = _buildBanner(r);
 
     const overdueWarn = isOverdue
       ? `<div class="overdue-warning">⚠️ <strong>Overdue:</strong> Due date ${esc(due)} has passed and payment is unpaid</div>`
@@ -1487,12 +1940,12 @@
       <!-- ── Static fields ── -->
       <div class="field-group">
         <label>Vendor</label>
-        <input id="f-vendor_name_normalized" class="${confClass(r,'vendor')}" value="${esc(vendor)}">
+        <input id="f-vendor_name_normalized" class="${_fieldClass(r,'vendor')}" value="${esc(vendor)}">
       </div>
       <div class="field-row">
         <div class="field-group">
           <label>Property</label>
-          ${buildSelect('f-property', props, prop, confClass(r,'property'))}
+          ${buildSelect('f-property', props, prop, _fieldClass(r,'property'))}
         </div>
         <div class="field-group">
           <label>Unit</label>
@@ -1502,25 +1955,33 @@
       <div class="field-row">
         <div class="field-group">
           <label>Document type</label>
-          ${buildSelect('f-document_type', canonicalValues.document_types || ['bill','invoice','receipt'], r.document_type)}
+          ${buildSelect('f-document_type', canonicalValues.document_types || ['bill','invoice','receipt'], r.document_type, _fieldClass(r,'document_type'))}
         </div>
         <div class="field-group">
           <label>Vendor category</label>
-          ${buildSelect('f-vendor_category', vcats, r.vendor_category || '')}
+          ${buildSelect('f-vendor_category', vcats, r.vendor_category || '', _fieldClass(r,'vendor_category'))}
         </div>
       </div>
       <div class="field-row">
         <div class="field-group">
           <label>Account number</label>
-          <input id="f-account_number" class="${confClass(r,'account_number')}" value="${esc(acct)}">
+          <input id="f-account_number" class="${_fieldClass(r,'account_number')}" value="${esc(acct)}">
         </div>
         <div class="field-group">
           <label>Billing frequency</label>
-          ${buildSelect('f-billing_frequency', ['','Weekly','Monthly','Bi-Monthly','Quarterly','Yearly','Random'], r.billing_frequency || '')}
+          ${buildSelect('f-billing_frequency', ['','Weekly','Monthly','Bi-Monthly','Quarterly','Yearly','Random'], defaultBillingFreq, _fieldClass(r,'billing_frequency'))}
         </div>
       </div>
       <!-- Service address — hidden from UI, preserved in data -->
       <input type="hidden" id="f-service_address" value="${esc(r.service_address || '')}">
+
+      <!-- ── Confirm Fields bar ── -->
+      <div class="confirm-fields-bar">
+        <label id="rt-save-toggle" style="display:${_rtState(r).state !== 'full' ? 'flex' : 'none'};align-items:center;gap:5px;font-size:12px;color:#555;cursor:pointer;white-space:nowrap;">
+          <input type="checkbox" id="f-save-to-rt"> Save to Reference Table
+        </label>
+        <button class="btn sm green" onclick="confirmFields()" style="margin-left:auto;">✓ Confirm Fields</button>
+      </div>
 
       <div class="modal-divider"></div>
 
@@ -1563,7 +2024,7 @@
         </div>
         <div class="field-group">
           <label>Payment status</label>
-          ${buildSelect('f-payment_status', canonicalValues.payment_statuses || ['unpaid','paid','overdue','partial'], r.payment_status || 'unpaid')}
+          ${buildSelect('f-payment_status', canonicalValues.payment_statuses || ['unpaid','paid','overdue','partial'], defaultPaymentStatus)}
         </div>
       </div>
       <div class="field-group">
@@ -1621,14 +2082,15 @@
     if (!el || !currentFilename) return;
 
     const payload = {
-      property:              getFieldValue('f-property'),
-      vendor_category:       getFieldValue('f-vendor_category'),
-      document_type:         getFieldValue('f-document_type'),
-      bill_date:             getFieldValue('f-bill_date'),
+      property:               getFieldValue('f-property'),
+      vendor_category:        getFieldValue('f-vendor_category'),
+      document_type:          getFieldValue('f-document_type'),
+      bill_date:              getFieldValue('f-bill_date'),
       vendor_name_normalized: getFieldValue('f-vendor_name_normalized'),
-      unit:                  getFieldValue('f-unit'),
-      amount_due:            getFieldValue('f-amount_due'),
-      source_file:           currentFilename,
+      unit:                   getFieldValue('f-unit'),
+      amount_due:             getFieldValue('f-amount_due'),
+      account_number:         getFieldValue('f-account_number'),
+      source_file:            currentFilename,
     };
 
     el.textContent = 'Computing…';
@@ -1669,15 +2131,34 @@
     const el = document.getElementById('ed-new-path');
     const warnEl = document.getElementById('ed-path-exists-warn');
     if (!el || !_editRecord) return;
-    const payload = {
-      property:      getEditFieldValue('ed-property'),
+
+    const current = {
+      property:        getEditFieldValue('ed-property'),
       vendor_category: getEditFieldValue('ed-vendor_category'),
-      document_type: getEditFieldValue('ed-document_type'),
-      vendor_name:   getEditFieldValue('ed-vendor_name'),
-      document_date: getEditFieldValue('ed-document_date'),
-      amount_due:    getEditFieldValue('ed-amount_due'),
-      unit:          getEditFieldValue('ed-unit'),
-      source_file:   _editRecord.source_file || 'document.pdf',
+      vendor_name:     getEditFieldValue('ed-vendor_name'),
+      document_date:   getEditFieldValue('ed-document_date'),
+      amount_due:      getEditFieldValue('ed-amount_due'),
+      document_type:   getEditFieldValue('ed-document_type'),
+      unit:            getEditFieldValue('ed-unit'),
+    };
+
+    // If no path-affecting field has changed, show a no-change message
+    const pathChanged = _editOriginals && Object.keys(current).some(
+      k => current[k] !== (_editOriginals[k] || '')
+    );
+    if (!pathChanged) {
+      el.textContent = 'No change — file stays at current path';
+      el.style.color = '#aaa';
+      el.style.fontStyle = 'italic';
+      if (warnEl) warnEl.style.display = 'none';
+      return;
+    }
+
+    el.style.fontStyle = '';
+    const payload = {
+      ...current,
+      account_number:  getEditFieldValue('ed-account_number'),
+      source_file:     _editRecord.source_file || 'document.pdf',
     };
     el.textContent = 'Computing…';
     el.style.color = '#bbb';
@@ -1737,6 +2218,26 @@
       // selects fire 'change', not 'input'
       if (el && el.tagName === 'SELECT') el.addEventListener('change', schedulePathUpdate);
     });
+
+    // Auto-flip payment_status when document type changes
+    const docTypeEl = document.getElementById('f-document_type');
+    if (docTypeEl) {
+      docTypeEl.addEventListener('change', () => {
+        const ps = document.getElementById('f-payment_status');
+        if (ps) ps.value = docTypeEl.value === 'receipt' ? 'paid' : 'unpaid';
+      });
+    }
+
+    // Auto-set billing_frequency to Random for Meals and Entertainment vendors
+    const vendorCatEl = document.getElementById('f-vendor_category');
+    if (vendorCatEl) {
+      vendorCatEl.addEventListener('change', () => {
+        const bf = document.getElementById('f-billing_frequency');
+        if (bf && ['meals', 'entertainment'].includes(vendorCatEl.value.toLowerCase())) {
+          bf.value = 'Random';
+        }
+      });
+    }
   }
 
   async function loadAccountHistory(accountNumber, vendor) {
@@ -1782,6 +2283,45 @@
       : '';
   }
 
+  async function confirmFields() {
+    const vendor  = getFieldValue('f-vendor_name_normalized');
+    const acct    = getFieldValue('f-account_number');
+    const address = getFieldValue('f-service_address');
+
+    const res = await fetch('/api/reference-check', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ vendor_name: vendor, account_number: acct, service_address: address }),
+    }).then(r => r.json()).catch(() => null);
+
+    if (!res) { showToast('Reference check failed', 'error'); return; }
+
+    // Update in-memory result so banner and field classes reflect the new state
+    if (currentResult) {
+      currentResult._reference_match        = res.match_count >= 2;
+      currentResult._reference_match_fields = res.matched_fields;
+    }
+
+    // Swap out banner in place
+    const oldBanner = document.getElementById('rt-match-banner');
+    if (oldBanner && currentResult) {
+      oldBanner.outerHTML = _buildBanner(currentResult);
+    }
+
+    // Show/hide RT save toggle based on new state
+    const toggle = document.getElementById('rt-save-toggle');
+    if (toggle && currentResult) {
+      const { state } = _rtState(currentResult);
+      toggle.style.display = state !== 'full' ? 'flex' : 'none';
+    }
+
+    const n = res.match_count;
+    showToast(
+      n >= 3 ? 'Full RT match confirmed ✓' : n >= 2 ? 'Partial RT match' : 'No RT match found',
+      n >= 2 ? 'success' : 'info'
+    );
+  }
+
   async function confirmDocument() {
     if (!currentFilename) return;
 
@@ -1789,7 +2329,14 @@
     const vendorCat = getFieldValue('f-vendor_category');
     const unit      = getFieldValue('f-unit');
     if (vendorCat === 'handyman services' && !unit.trim()) {
-      if (!confirm('Unit is not set for this handyman invoice.\nFiling without a unit — continue?')) return;
+      const proceed = await showConfirmModal({
+        title: '⚠️ Unit Not Set',
+        body: '<p>Unit is not set for this handyman invoice. File without a unit?</p>',
+        confirmLabel: 'File Without Unit',
+        confirmClass: 'danger',
+        requireTyped: null,
+      });
+      if (!proceed) return;
     }
 
     const payload = {
@@ -1814,16 +2361,24 @@
       _reference_match:        currentResult ? !!currentResult._reference_match : false,
     };
 
+    // If RT save checkbox is checked, flag for backend to write to reference table
+    const rtSaveCb = document.getElementById('f-save-to-rt');
+    if (rtSaveCb && rtSaveCb.checked) payload._save_to_reference_table = true;
+
     // If user manually overrode the filing path, send it
     const overrideInp = document.getElementById('f-filing-path-override');
     if (overrideInp && overrideInp.style.display !== 'none' && overrideInp.value.trim()) {
       payload._path_override = overrideInp.value.trim();
     }
-    const r = await fetch('/api/confirm/' + encodeURIComponent(currentFilename), {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload),
-    }).then(r => r.json()).catch(() => null);
+    const _doConfirm = async (extraFlags = {}) => {
+      return fetch('/api/confirm/' + encodeURIComponent(currentFilename), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ ...payload, ...extraFlags }),
+      }).then(r => r.json()).catch(() => null);
+    };
+
+    const r = await _doConfirm();
 
     if (r && r.ok) {
       closeModal();
@@ -1831,25 +2386,70 @@
       refreshActivity();
       refreshRecent();
       refreshStats();
+    } else if (r && r.error === 'duplicate_path') {
+      const existingPath = r.existing_path || '';
+      const overwrite = await showConfirmModal({
+        title: '⚠️ File Already Exists',
+        body: `<p>A document already exists at this filing path. This may be a duplicate filing.</p>
+               <p style="margin-top:10px;font-family:monospace;font-size:11px;word-break:break-all;color:#555;">${existingPath}</p>`,
+        confirmLabel: 'File Anyway — Overwrite',
+        confirmClass: 'danger',
+      });
+      if (!overwrite) return;
+      const r2 = await _doConfirm({ _allow_overwrite: true });
+      if (r2 && r2.ok) {
+        closeModal();
+        refreshQueue();
+        refreshActivity();
+        refreshRecent();
+        refreshStats();
+      } else {
+        await showConfirmModal({
+          title: '❌ Filing Error',
+          body: `<p>${r2 ? (r2.error || r2.message || 'An unknown error occurred') : 'Could not reach the server.'}</p>`,
+          confirmLabel: 'OK',
+          confirmClass: '',
+          requireTyped: null,
+        });
+      }
     } else if (r && r.duplicate) {
-      alert(
-        '⚠️ Duplicate detected — this document was already filed.\n\n' +
-        'Matched on: ' + r.reason + '\n\n' +
-        'Originally filed: ' + r.original.filed_on + '\n' +
-        'Location: ' + r.original.filed_path + '\n\n' +
-        'The document has been moved to D:\\Scans\\Duplicates\\ for your review.'
-      );
+      await showConfirmModal({
+        title: '⚠️ Duplicate Detected',
+        body: `<p>This document was already filed.</p>
+               <ul style="margin:10px 0 10px 16px;line-height:2;">
+                 <li><strong>Matched on:</strong> ${r.reason}</li>
+                 <li><strong>Originally filed:</strong> ${r.original.filed_on}</li>
+                 <li><strong>Location:</strong> <span style="font-family:monospace;font-size:11px;">${r.original.filed_path}</span></li>
+               </ul>
+               <p>The document has been moved to <code>D:\\Scans\\Duplicates\\</code> for your review.</p>`,
+        confirmLabel: 'OK',
+        confirmClass: '',
+        requireTyped: null,
+      });
       closeModal();
       refreshQueue();
       refreshActivity();
     } else {
-      alert('Filing error: ' + (r ? r.error : 'unknown error'));
+      await showConfirmModal({
+        title: '❌ Filing Error',
+        body: `<p>${r ? (r.error || r.message || 'An unknown error occurred') : 'Could not reach the server.'}</p>`,
+        confirmLabel: 'OK',
+        confirmClass: '',
+        requireTyped: null,
+      });
     }
   }
 
   async function rejectDocument() {
     if (!currentFilename) return;
-    if (!confirm('Move this document to the Error folder?')) return;
+    const confirmed = await showConfirmModal({
+      title: 'Reject Document',
+      body: '<p>Move this document to the Error folder?</p>',
+      confirmLabel: 'Reject',
+      confirmClass: 'danger',
+      requireTyped: null,
+    });
+    if (!confirmed) return;
     await fetch('/api/reject/' + encodeURIComponent(currentFilename), {method:'POST'});
     closeModal();
     refreshQueue();
@@ -1909,6 +2509,44 @@
       return true;
     });
 
+    // Apply sort
+    const sortBy = document.getElementById('filter-sort')?.value || 'bill_date_desc';
+    filtered.sort((a, b) => {
+      const parseAmt = r => parseFloat((r.amount_due || '').replace(/[^0-9.]/g, '')) || 0;
+      switch (sortBy) {
+        case 'bill_date_asc':
+          return (a.bill_date || a.document_date || '') < (b.bill_date || b.document_date || '') ? -1 : 1;
+        case 'bill_date_desc':
+          return (a.bill_date || a.document_date || '') > (b.bill_date || b.document_date || '') ? -1 : 1;
+        case 'filed_date_desc':
+          return (a.timestamp || '') > (b.timestamp || '') ? -1 : 1;
+        case 'filed_date_asc':
+          return (a.timestamp || '') < (b.timestamp || '') ? -1 : 1;
+        case 'amount_desc':
+          return parseAmt(b) - parseAmt(a);
+        case 'amount_asc':
+          return parseAmt(a) - parseAmt(b);
+        case 'vendor_az':
+          return (a.vendor_name || '').localeCompare(b.vendor_name || '');
+        case 'vendor_za':
+          return (b.vendor_name || '').localeCompare(a.vendor_name || '');
+        case 'property_az':
+          return (a.property || '').localeCompare(b.property || '');
+        case 'property_za':
+          return (b.property || '').localeCompare(a.property || '');
+        case 'unit_az':
+          return (a.unit || '').localeCompare(b.unit || '');
+        case 'unit_za':
+          return (b.unit || '').localeCompare(a.unit || '');
+        case 'status_az':
+          return (a.payment_status || '').localeCompare(b.payment_status || '');
+        case 'status_za':
+          return (b.payment_status || '').localeCompare(a.payment_status || '');
+        default: // bill_date_desc
+          return (a.bill_date || a.document_date || '') > (b.bill_date || b.document_date || '') ? -1 : 1;
+      }
+    });
+
     const cnt = document.getElementById('recent-count');
     const suffix = filtered.length < recentRows.length ? ` (${filtered.length} shown)` : '';
     if (cnt) cnt.textContent = `${recentRows.length} record${recentRows.length===1?'':'s'}${suffix} · click any row to edit`;
@@ -1927,21 +2565,65 @@
     applyFilters();
   }
 
+  // ── Column sort state ─────────────────────────────────────────
+  // Tracks which column header is active and its direction.
+  // Synced bidirectionally with the #filter-sort dropdown.
+  let _colSort = { col: 'date', dir: 'desc' };
+
+  const _COL_SORT_MAP = {
+    date:     ['bill_date_asc',   'bill_date_desc'],
+    logged:   ['filed_date_asc',  'filed_date_desc'],
+    vendor:   ['vendor_az',       'vendor_za'],
+    property: ['property_az',     'property_za'],
+    unit:     ['unit_az',         'unit_za'],
+    amount:   ['amount_asc',      'amount_desc'],
+    status:   ['status_az',       'status_za'],
+  };
+
+  // Reverse map: dropdown value → { col, dir }
+  const _SORT_VAL_TO_COL = {};
+  for (const [col, [asc, desc]] of Object.entries(_COL_SORT_MAP)) {
+    _SORT_VAL_TO_COL[asc]  = { col, dir: 'asc' };
+    _SORT_VAL_TO_COL[desc] = { col, dir: 'desc' };
+  }
+
+  function sortByColumn(col) {
+    _colSort.dir = (_colSort.col === col && _colSort.dir === 'asc') ? 'desc' : 'asc';
+    _colSort.col = col;
+    const [asc, desc] = _COL_SORT_MAP[col];
+    const sel = document.getElementById('filter-sort');
+    if (sel) sel.value = _colSort.dir === 'asc' ? asc : desc;
+    applyFilters();
+  }
+
+  function _syncColSortFromDropdown() {
+    const val = document.getElementById('filter-sort')?.value;
+    if (val && _SORT_VAL_TO_COL[val]) _colSort = { ..._SORT_VAL_TO_COL[val] };
+  }
+
   function renderRecentRows(rows) {
     const el = document.getElementById('recent-list');
     if (!rows.length) {
       el.innerHTML = '<div class="empty" style="padding:20px 0;">No documents match the current filters</div>';
       return;
     }
+    const _arrow = col => _colSort.col === col
+      ? ` <span style="color:#1a7a4a;font-size:11px;">${_colSort.dir === 'asc' ? '↑' : '↓'}</span>`
+      : '';
+    const _thBase = 'padding:6px 8px;font-weight:600;cursor:pointer;user-select:none;white-space:nowrap;';
+    const _th = (col, label, extra) =>
+      `<th onclick="sortByColumn('${col}')" onmouseover="this.style.background='#f0f7f3'" onmouseout="this.style.background=''" style="${_thBase}${extra||''}" title="Sort by ${label}">${label}${_arrow(col)}</th>`;
+
     el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead>
         <tr style="color:#888;text-align:left;border-bottom:1px solid #e5e5e0;position:sticky;top:0;background:#fff;z-index:1;">
-          <th style="padding:6px 8px;font-weight:600;">Date</th>
-          <th style="padding:6px 8px;font-weight:600;">Vendor</th>
-          <th style="padding:6px 8px;font-weight:600;">Property</th>
-          <th style="padding:6px 8px;font-weight:600;">Unit</th>
-          <th style="padding:6px 8px;font-weight:600;text-align:right;">Amount</th>
-          <th style="padding:6px 8px;font-weight:600;">Status</th>
+          ${_th('date',     'Date')}
+          ${_th('logged',   'Logged')}
+          ${_th('vendor',   'Vendor')}
+          ${_th('property', 'Property')}
+          ${_th('unit',     'Unit')}
+          ${_th('amount',   'Amount', 'text-align:right;')}
+          ${_th('status',   'Status')}
         </tr>
       </thead>
       <tbody>
@@ -1952,8 +2634,12 @@
         const badge       = r.is_overdue
           ? statusBadge + ` <span class="badge overdue" style="font-size:10px;">Overdue</span>`
           : statusBadge;
+        const loggedDate = r.timestamp
+          ? (() => { const d = new Date(r.timestamp); return isNaN(d) ? '—' : d.toLocaleDateString('en-US', {month:'short',day:'2-digit',year:'numeric'}); })()
+          : '—';
         return `<tr class="${cls}" onclick="openDocumentEdit(${rowIdx})" style="cursor:pointer;" title="Click to edit">
           <td style="padding:6px 8px;color:#888;white-space:nowrap;">${r.document_date||'—'}</td>
+          <td style="padding:6px 8px;color:#888;white-space:nowrap;">${loggedDate}</td>
           <td style="padding:6px 8px;font-weight:500;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${esc(r.vendor_name||'')}">${r.vendor_name||'—'}</td>
           <td style="padding:6px 8px;color:#888;white-space:nowrap;">${r.property||'—'}</td>
           <td style="padding:6px 8px;color:#888;text-align:center;">${r.unit||'—'}</td>
@@ -1966,13 +2652,33 @@
   }
 
   // ── Edit modal for filed records ──────────────────────────────
-  let _editRecord = null;  // stores original record for change detection
+  let _editRecord    = null;  // stores original record for change detection
+  let _editOriginals = null; // snapshot of path-affecting field values at modal-open time
 
   async function openDocumentEdit(displayIndex) {
     await ensureCanonicalValues();
     const r = await fetch('/api/master-log/' + displayIndex).then(x => x.json()).catch(() => null);
-    if (!r || r.error) { alert('Could not load record'); return; }
+    if (!r || r.error) {
+      await showConfirmModal({
+        title: '❌ Could Not Load Record',
+        body: `<p>${r?.error || 'Could not reach the server.'}</p>`,
+        confirmLabel: 'OK',
+        confirmClass: '',
+        requireTyped: null,
+      });
+      return;
+    }
     _editRecord = r;
+    // Snapshot path-affecting fields so updateEditFilingPathPreview can detect changes
+    _editOriginals = {
+      property:        r.property        || '',
+      vendor_category: r.vendor_category || '',
+      vendor_name:     r.vendor_name     || '',
+      document_date:   r.document_date   || '',
+      amount_due:      r.amount_due      || '',
+      document_type:   r.document_type   || '',
+      unit:            r.unit            || '',
+    };
 
     const props  = canonicalValues.properties || [];
     const vcats  = canonicalValues.vendor_categories || [];
@@ -2211,17 +2917,39 @@
     if (res && res.ok) {
       const overlay = document.getElementById('edit-modal-overlay');
       if (overlay) overlay.remove();
-      if (res.file_error) alert('Record saved but file move failed:\n' + res.file_error);
+      if (res.file_error) {
+        await showConfirmModal({
+          title: '⚠️ File Move Failed',
+          body: `<p>Record was saved but the file could not be moved.</p>
+                 <p style="margin-top:8px;font-family:monospace;font-size:11px;word-break:break-all;">${esc(res.file_error)}</p>`,
+          confirmLabel: 'OK',
+          confirmClass: '',
+          requireTyped: null,
+        });
+      }
       refreshRecent();
       refreshActivity();
       refreshStats();
     } else {
-      alert('Save failed: ' + (res ? res.error || JSON.stringify(res) : 'network error'));
+      await showConfirmModal({
+        title: '❌ Save Failed',
+        body: `<p>${res ? (res.error || JSON.stringify(res)) : 'Could not reach the server.'}</p>`,
+        confirmLabel: 'OK',
+        confirmClass: '',
+        requireTyped: null,
+      });
     }
   }
 
   async function confirmDeleteRecord(displayIndex) {
-    if (!confirm('Delete this record AND its filed PDF permanently?')) return;
+    const confirmed = await showConfirmModal({
+      title: '🗑 Delete Record',
+      body: '<p>Delete this record <strong>and</strong> its filed PDF permanently? This cannot be undone.</p>',
+      confirmLabel: 'Delete Permanently',
+      confirmClass: 'danger',
+      requireTyped: null,
+    });
+    if (!confirmed) return;
     const res = await fetch('/api/master-log/' + displayIndex, {
       method: 'DELETE',
       headers: {'Content-Type':'application/json'},
@@ -2234,7 +2962,13 @@
       refreshActivity();
       refreshStats();
     } else {
-      alert('Delete failed: ' + (res?.error || 'unknown error'));
+      await showConfirmModal({
+        title: '❌ Delete Failed',
+        body: `<p>${res?.error || 'An unknown error occurred.'}</p>`,
+        confirmLabel: 'OK',
+        confirmClass: '',
+        requireTyped: null,
+      });
     }
   }
 

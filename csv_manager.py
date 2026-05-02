@@ -11,9 +11,12 @@ Master log schema is the agreed final version:
   - year_month added for easy pivot table slicing
   - payment_status added for outstanding balance filtering
 
-Duplicate detection uses Claude's extracted content fields:
-  vendor_name + account_number + document_date + amount_due
-  (not filenames — filenames are unreliable)
+Duplicate detection:
+  Primary:  account_number (strip whitespace/dashes) + document_date
+            — used when both records carry an account number.
+  Fallback: vendor_name (normalize_vendor_for_dedup) + document_date
+            — used when either record lacks an account number (e.g. handyman).
+  Source:   source_file match is checked first (same physical scan).
 
 Reject/delete: delete_master_log_record() removes a bad record
   written during a failed processing attempt so it doesn't block
@@ -21,12 +24,14 @@ Reject/delete: delete_master_log_record() removes a bad record
 """
 
 import os
+import re
 import csv
 import shutil
 from datetime import datetime
 from pathlib import Path
 
 from csv_guard import guarded_write
+from modules.reference_matcher import normalize_vendor_for_dedup
 
 # === FILE PATHS ===
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
@@ -106,10 +111,37 @@ MASTER_LOG_FIELDS = [
     # ── Audit ─────────────────────────────────────────────────
     "manually_edited",            # "yes" if record was manually edited after filing
     "last_edited_timestamp",      # ISO timestamp of last manual edit
+
+    # ── Drive sync ────────────────────────────────────────────
+    "sync_status",                # pending / synced / failed / "" (Drive not configured)
 ]
 
 
 # === INITIALIZATION ===
+
+def _migrate_add_sync_status():
+    """One-time migration: add sync_status column to an existing master log that predates it."""
+    if not os.path.exists(MASTER_LOG_CSV):
+        return
+    with open(MASTER_LOG_CSV, newline="", encoding="utf-8") as f:
+        try:
+            header = next(csv.reader(f))
+        except StopIteration:
+            return
+    if "sync_status" in header:
+        return
+    # Read all rows
+    rows = read_csv_as_dicts(MASTER_LOG_CSV)
+    for row in rows:
+        row["sync_status"] = ""
+    # Write directly — bypass CSVGuard since we are updating the schema itself
+    backup_csv(MASTER_LOG_CSV)
+    with open(MASTER_LOG_CSV, "w", newline="", encoding="utf-8") as f:
+        writer = csv.DictWriter(f, fieldnames=MASTER_LOG_FIELDS, extrasaction="ignore")
+        writer.writeheader()
+        writer.writerows(rows)
+    print("  [CSV] Migration: added sync_status column to document_master_log.csv")
+
 
 def initialize_csv_files():
     os.makedirs(BACKUP_DIR, exist_ok=True)
@@ -126,6 +158,8 @@ def initialize_csv_files():
             writer = csv.DictWriter(f, fieldnames=MASTER_LOG_FIELDS)
             writer.writeheader()
         print("  [CSV] Created document_master_log.csv")
+
+    _migrate_add_sync_status()
 
 
 # === BACKUP ===
@@ -230,31 +264,43 @@ def is_master_log_duplicate(existing_row: dict, new_row: dict) -> tuple[bool, st
     """
     Returns (is_duplicate, reason_string).
 
-    Duplicate = all four content fields match:
-      vendor_name + account_number + document_date + amount_due
+    Primary match:  account_number (case-insensitive, strip whitespace/dashes)
+                    + document_date  — when both records have an account number.
+    Fallback match: vendor_name (normalize_vendor_for_dedup)
+                    + document_date  — when either record lacks an account number.
 
-    All four must be non-empty in both records for the check to fire.
-    Conservative by design: missing data = allow through rather than block.
+    Conservative: missing date = allow through rather than block.
     """
-    vendor_new  = normalize_key(new_row.get("vendor_name", ""))
-    account_new = normalize_key(new_row.get("account_number", ""))
-    date_new    = normalize_key(new_row.get("document_date", ""))
-    amount_new  = normalize_amount(new_row.get("amount_due", ""))
+    date_new = normalize_key(new_row.get("document_date", ""))
+    date_ex  = normalize_key(existing_row.get("document_date", ""))
+    if not date_new or not date_ex or date_new != date_ex:
+        return False, ""
 
-    if not all([vendor_new, account_new, date_new, amount_new]):
-        return False, "insufficient_data_to_check"
+    def _norm_acct(s: str) -> str:
+        return re.sub(r"[\s\-]", "", normalize_key(s))
 
-    vendor_ex  = normalize_key(existing_row.get("vendor_name", ""))
-    account_ex = normalize_key(existing_row.get("account_number", ""))
-    date_ex    = normalize_key(existing_row.get("document_date", ""))
-    amount_ex  = normalize_amount(existing_row.get("amount_due", ""))
+    acct_new = _norm_acct(new_row.get("account_number", ""))
+    acct_ex  = _norm_acct(existing_row.get("account_number", ""))
 
-    if (vendor_new == vendor_ex and account_new == account_ex and
-            date_new == date_ex and amount_new == amount_ex):
-        reason = (f"vendor='{vendor_new}' | account='{account_new}' | "
-                  f"date='{date_new}' | amount='{amount_new}'")
-        return True, reason
+    if acct_new and acct_ex:
+        if acct_new == acct_ex:
+            return True, f"account_number='{acct_new}' | date='{date_new}'"
+        return False, ""
 
+    # Fallback: no account number on one or both sides
+    vendor_new = normalize_vendor_for_dedup(new_row.get("vendor_name", ""))
+    vendor_ex  = normalize_vendor_for_dedup(existing_row.get("vendor_name", ""))
+    if not vendor_new or not vendor_ex:
+        return False, ""
+    if vendor_new == vendor_ex:
+        if new_row.get("document_type") == "receipt":
+            # Receipts: also require amount match — same restaurant same day is allowed
+            amount_new = normalize_amount(new_row.get("amount_due", ""))
+            amount_ex  = normalize_amount(existing_row.get("amount_due", ""))
+            if amount_new and amount_ex and amount_new == amount_ex:
+                return True, f"vendor_name='{vendor_new}' | date='{date_new}' | amount='{amount_new}'"
+            return False, ""
+        return True, f"vendor_name='{vendor_new}' | date='{date_new}'"
     return False, ""
 
 
@@ -418,9 +464,14 @@ def build_master_log_row(record: dict) -> dict:
         "final_storage_path":         normalize_value(record.get("final_storage_path")),
         "confidence_score":           normalize_value(record.get("confidence_score")),
         "claude_used":                "True",
-        "duplicate_check_fields":     "vendor_name|account_number|document_date|amount_due",
+        "duplicate_check_fields":     (
+            "account_number|document_date"
+            if normalize_value(record.get("account_number"))
+            else "vendor_name|document_date"
+        ),
         "manually_edited":            "",
         "last_edited_timestamp":      "",
+        "sync_status":                "",   # Set to "pending" by _trigger_drive_sync
     }
 
 
@@ -533,6 +584,59 @@ def delete_reference_if_orphaned(vendor_name: str, account_number: str) -> bool:
         print(f"  [CSV] Orphaned reference removed: {vendor_name} / {account_number or '(no acct)'}")
         return True
     return False
+
+
+def update_sync_status_by_path(final_storage_path: str, status: str) -> bool:
+    """
+    Set sync_status for the master log row whose final_storage_path matches.
+
+    Called by:
+      - _trigger_drive_sync (app.py) when queuing a PDF upload → "pending"
+      - google_drive._process_item on failure → "failed"
+
+    Returns True if a row was found and updated.
+    """
+    if not final_storage_path:
+        return False
+    norm = str(final_storage_path).strip()
+    rows = read_csv_as_dicts(MASTER_LOG_CSV)
+    updated = False
+    for row in rows:
+        if row.get("final_storage_path", "").strip() == norm:
+            row["sync_status"] = status
+            updated = True
+            break
+    if updated:
+        write_csv(MASTER_LOG_CSV, MASTER_LOG_FIELDS, rows)
+        print(f"  [CSV] sync_status → '{status}' for {norm}")
+    return updated
+
+
+def update_storage_path(old_path: str, new_path: str, sync_status: str) -> bool:
+    """
+    Update both final_storage_path and sync_status for the record matching old_path.
+
+    Called when a file moves storage locations:
+      - google_drive._process_item on success: local D:/Temp path → gdrive:// + "synced"
+      - import_from_temp: C:/Scanner_MVP_Temp path → D:/PropertyDocs path + "pending"
+
+    Returns True if a row was found and updated.
+    """
+    if not old_path:
+        return False
+    norm = str(old_path).strip()
+    rows = read_csv_as_dicts(MASTER_LOG_CSV)
+    updated = False
+    for row in rows:
+        if row.get("final_storage_path", "").strip() == norm:
+            row["final_storage_path"] = new_path
+            row["sync_status"]        = sync_status
+            updated = True
+            break
+    if updated:
+        write_csv(MASTER_LOG_CSV, MASTER_LOG_FIELDS, rows)
+        print(f"  [CSV] path updated → '{new_path}' ({sync_status})")
+    return updated
 
 
 def append_document_master_record(record: dict) -> tuple[bool, str, dict]:

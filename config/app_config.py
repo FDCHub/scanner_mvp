@@ -22,11 +22,12 @@ class PropertyRecord:
 class AppConfig:
     PROJECT_NAME = "scanner_mvp"
     INCOMING_SCAN_FOLDER = Path(r"D:\Scans\Incoming")
-    WORKING_FOLDER = Path(r"D:\Scans\Working")
-    PROCESSED_FOLDER = Path(r"D:\Scans\Processed")
-    ERROR_FOLDER = Path(r"D:\Scans\Error")
-    DELETED_FOLDER = Path(r"D:\Scans\Deleted")
-    ARCHIVE_ROOT = Path(r"D:\PropertyDocs")
+    WORKING_FOLDER       = Path(r"D:\Scans\Working")
+    PROCESSED_FOLDER     = Path(r"D:\Scans\Processed")
+    ERROR_FOLDER         = Path(r"D:\Scans\Error")
+    DELETED_FOLDER       = Path(r"D:\Scans\Deleted")
+    ARCHIVE_ROOT         = Path(r"D:\PropertyDocs")
+    TEMP_DIR             = Path(r"C:\Scanner_MVP_Temp")
 
     ACCEPTED_EXTENSIONS = {".pdf"}
     FILE_STABLE_WAIT_SECONDS = 3
@@ -42,6 +43,7 @@ class AppConfig:
 
     @classmethod
     def runtime_folders(cls) -> List[Path]:
+        """D: drive folders — caller must guard with Path('D:/').exists()."""
         return [
             cls.INCOMING_SCAN_FOLDER,
             cls.WORKING_FOLDER,

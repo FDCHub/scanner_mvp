@@ -35,6 +35,8 @@ _STANDARD_CATEGORIES: list[str] = [
     "Permits",
     "Licenses",
     "Handyman",
+    "Meals",
+    "Entertainment",
     "NeedsReview",
 ]
 
@@ -81,8 +83,16 @@ def _migrate_old_category(prop_dir: Path, old_name: str, new_name: str) -> None:
         print(f"[FolderInit] WARNING: '{old_name}/' not empty after migration in {prop_dir.name} — manual review needed")
 
 
-def _ensure_property_folders(prop_dir: Path) -> None:
-    """Run migrations then create all standard folders under a single property dir."""
+# Extra category folders created only for the Business property
+_BUSINESS_EXTRA_CATEGORIES: list[str] = ["Legal", "Taxes"]
+
+
+def _ensure_property_folders(prop_dir: Path, extra_categories: list[str] | None = None) -> None:
+    """Run migrations then create all standard folders under a single property dir.
+
+    extra_categories — additional folders to create beyond _STANDARD_CATEGORIES
+    (used for Business, which also needs Legal and Taxes).
+    """
     prop_dir.mkdir(parents=True, exist_ok=True)
 
     # 1. Migrate legacy folder names first so they aren't re-created as old names
@@ -90,7 +100,8 @@ def _ensure_property_folders(prop_dir: Path) -> None:
         _migrate_old_category(prop_dir, old_name, new_name)
 
     # 2. Create all standard category folders (idempotent)
-    for cat in _STANDARD_CATEGORIES:
+    all_categories = list(_STANDARD_CATEGORIES) + (extra_categories or [])
+    for cat in all_categories:
         target = prop_dir / cat
         if not target.exists():
             target.mkdir()
@@ -150,30 +161,48 @@ def _cleanup_root_level_categories(archive_root: Path) -> None:
 
 
 def ensure_required_folders() -> None:
+    # ── 0. C: Temp fallback — always available, always created ───────────────
+    AppConfig.TEMP_DIR.mkdir(parents=True, exist_ok=True)
+
+    # ── D: drive folders are created only when the drive is connected ─────────
+    if not Path("D:/").exists():
+        print("[FolderInit] D: drive not available — skipping D: folder creation")
+        return
+
     # ── 1. Runtime scan folders (Incoming, Working, Processed, Error, Deleted) ──
     for folder in AppConfig.runtime_folders():
-        Path(folder).mkdir(parents=True, exist_ok=True)
+        try:
+            Path(folder).mkdir(parents=True, exist_ok=True)
+        except Exception as exc:
+            print(f"[FolderInit] Could not create {folder}: {exc}")
 
     # ── 2. PropertyDocs root ──────────────────────────────────────────────────
     archive_root = AppConfig.ARCHIVE_ROOT
-    archive_root.mkdir(parents=True, exist_ok=True)
+    try:
+        archive_root.mkdir(parents=True, exist_ok=True)
 
-    # 2a. Property-level folder renames (old name → canonical name)
-    _migrate_property_folder(archive_root, "3047 Sea Marsh", "3047 Sea Marsh Rd")
+        # 2a. Property-level folder renames (old name → canonical name)
+        _migrate_property_folder(archive_root, "3047 Sea Marsh", "3047 Sea Marsh Rd")
 
-    # 2b. Clean up any category folders that were incorrectly created at the root
-    _cleanup_root_level_categories(archive_root)
+        # 2b. Clean up any category folders that were incorrectly created at the root
+        _cleanup_root_level_categories(archive_root)
 
-    # 2c. Create / migrate category structure for each property
-    for prop_name in _PROPERTY_FOLDER_NAMES:
-        _ensure_property_folders(archive_root / prop_name)
+        # 2c. Create / migrate category structure for each property
+        for prop_name in _PROPERTY_FOLDER_NAMES:
+            extra = _BUSINESS_EXTRA_CATEGORIES if prop_name == "Business" else None
+            _ensure_property_folders(archive_root / prop_name, extra_categories=extra)
+    except Exception as exc:
+        print(f"[FolderInit] Could not create PropertyDocs structure: {exc}")
 
     # ── 3. PropertyMedia tree ─────────────────────────────────────────────────
     media_root = Path("D:/PropertyMedia")
-    media_root.mkdir(parents=True, exist_ok=True)
-    for prop_name, spaces in _PROPERTY_MEDIA_TREE.items():
-        prop_dir = media_root / prop_name
-        prop_dir.mkdir(parents=True, exist_ok=True)
-        _create_space(prop_dir / "_Building")
-        for space in spaces:
-            _create_space(prop_dir / space)
+    try:
+        media_root.mkdir(parents=True, exist_ok=True)
+        for prop_name, spaces in _PROPERTY_MEDIA_TREE.items():
+            prop_dir = media_root / prop_name
+            prop_dir.mkdir(parents=True, exist_ok=True)
+            _create_space(prop_dir / "_Building")
+            for space in spaces:
+                _create_space(prop_dir / space)
+    except Exception as exc:
+        print(f"[FolderInit] Could not create PropertyMedia structure: {exc}")

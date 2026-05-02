@@ -4,6 +4,7 @@ __pycache__/
 
 # Virtual environment
 venv/
+.venv/
 
 # IDE
 .idea/
@@ -42,3 +43,12 @@ reference_table.csv
 # Google Drive credentials — never commit these
 google_credentials.json
 google_token.json
+
+# Explicit data paths (also matched by bare filename rules above)
+data/document_master_log.csv
+data/reference_table.csv
+data/reference_table_backup.csv
+data/backups/
+
+# Temp scan staging area
+C:/Scanner_MVP_Temp/

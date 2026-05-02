@@ -15,7 +15,7 @@ import time
 import traceback
 from pathlib import Path
 from datetime import datetime
-from flask import Flask, jsonify, request, Response, send_from_directory
+from flask import Flask, jsonify, request, Response, send_from_directory, send_file
 from flask_cors import CORS
 from dotenv import load_dotenv
 
@@ -34,6 +34,7 @@ from modules.reference_matcher import (
     get_static_fields_from_match,
     canonicalize_service_address,
     extract_identifiers_from_text,
+    RANDOM_BILLING_CATEGORIES,
 )
 from csv_manager import (
     initialize_csv_files,
@@ -47,7 +48,10 @@ from csv_manager import (
     update_record_by_index,
     delete_record_by_index,
     delete_reference_if_orphaned,
+    update_sync_status_by_path,
+    update_storage_path,
     MASTER_LOG_CSV,
+    REFERENCE_CSV,
 )
 
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -86,6 +90,8 @@ _CATEGORY_MAP: dict[str, str] = {
     "repair":            "Repairs",
     "permits":           "Permits",
     "licenses":          "Licenses",
+    "meals":             "Meals",
+    "entertainment":     "Entertainment",
 }
 
 
@@ -122,15 +128,25 @@ def infer_vendor_category(result: dict) -> str:
 
 INCOMING_DIR      = Path("D:/Scans/Incoming")
 WORKING_DIR       = Path("D:/Scans/Working")
-FILED_DIR         = Path("D:/Scans/Filed")
 ERROR_DIR         = Path("D:/Scans/Error")
 DUP_DIR           = Path("D:/Scans/Duplicates")
 DELETED_DIR       = Path("D:/Scans/Deleted")
-PROPERTY_DOCS_DIR = Path("D:/PropertyDocs")
+PROPERTY_DOCS_DIR = Path("D:/PropertyDocs")       # local cache (D: drive)
+TEMP_DIR          = Path("C:/Scanner_MVP_Temp")   # fallback when D: unavailable
+TEMP_INCOMING_DIR = TEMP_DIR / "Incoming"
 CONFIG_PATH       = Path(__file__).parent / "config.json"
 
-for folder in [INCOMING_DIR, WORKING_DIR, FILED_DIR, ERROR_DIR, DUP_DIR, PROPERTY_DOCS_DIR]:
-    folder.mkdir(parents=True, exist_ok=True)
+# C: temp dirs are always created — app code always has C:
+TEMP_DIR.mkdir(parents=True, exist_ok=True)
+TEMP_INCOMING_DIR.mkdir(parents=True, exist_ok=True)
+
+# D: directories are created opportunistically — drive may not be connected
+if Path("D:/").exists():
+    for _d_folder in [INCOMING_DIR, WORKING_DIR, ERROR_DIR, DUP_DIR, DELETED_DIR, PROPERTY_DOCS_DIR]:
+        try:
+            _d_folder.mkdir(parents=True, exist_ok=True)
+        except Exception:
+            pass
 
 queue        = {}
 _queue_lock  = threading.Lock()   # guards all mutations of `queue`
@@ -242,7 +258,7 @@ def add_to_config_list(list_name: str, value: str) -> bool:
 # REFERENCE TABLE HELPERS
 # ================================================================
 
-REFERENCE_CSV_PATH = Path(__file__).parent / "data" / "reference_table.csv"
+_REFERENCE_CSV_PATH = Path(REFERENCE_CSV)   # canonical path — sourced from csv_manager
 
 _ref_table_cache: list[dict] | None = None
 _ref_table_mtime: float = 0.0
@@ -252,11 +268,11 @@ def _get_reference_table() -> list[dict]:
     """Return reference table, reloading if the file has changed on disk."""
     global _ref_table_cache, _ref_table_mtime
     try:
-        mtime = REFERENCE_CSV_PATH.stat().st_mtime if REFERENCE_CSV_PATH.exists() else 0.0
+        mtime = _REFERENCE_CSV_PATH.stat().st_mtime if _REFERENCE_CSV_PATH.exists() else 0.0
     except OSError:
         mtime = 0.0
     if _ref_table_cache is None or mtime != _ref_table_mtime:
-        _ref_table_cache = load_reference_table(REFERENCE_CSV_PATH)
+        _ref_table_cache = load_reference_table(_REFERENCE_CSV_PATH)
         _ref_table_mtime = mtime
     return _ref_table_cache
 
@@ -398,14 +414,16 @@ def _trigger_drive_sync(filed_pdf_path: Path, property_name: str,
     if filed_pdf_path.exists():
         drive_sync.queue_pdf_upload(filed_pdf_path, property_name,
                                      category=category, account_code=account_code)
+        # Mark this document as pending Drive sync in the master log
+        update_sync_status_by_path(str(filed_pdf_path), "pending")
 
     # 2. Upload updated master log
-    master_log = Path("data/document_master_log.csv")
+    master_log = Path(MASTER_LOG_CSV)
     if master_log.exists():
         drive_sync.queue_appdata_upload(master_log)
 
     # 3. Upload reference table (upsert_reference_record was called)
-    ref_table = Path("data/reference_table.csv")
+    ref_table = Path(REFERENCE_CSV)
     if ref_table.exists():
         drive_sync.queue_appdata_upload(ref_table)
 
@@ -448,7 +466,9 @@ def _vendor_abbrev(vendor: str) -> str:
     return "".join(t[0] for t in significant).upper()
 
 
-def build_filing_path(result: dict) -> Path:
+def build_filing_path(result: dict, base: Path | None = None) -> Path:
+    if base is None:
+        base = PROPERTY_DOCS_DIR
     prop     = (result.get("property") or "Unknown Property").strip()
     category = _normalize_category(result.get("vendor_category") or "")
     vendor   = (
@@ -470,7 +490,7 @@ def build_filing_path(result: dict) -> Path:
 
     account_code = f"{abbrev}_{acct_suffix}"
 
-    return PROPERTY_DOCS_DIR / prop / category / account_code
+    return base / prop / category / account_code
 
 
 def build_filename(result: dict, original_name: str) -> str:
@@ -629,12 +649,18 @@ def view_file():
     if not path_str:
         return jsonify({"error": "No path provided"}), 400
 
+    # Resolve Drive-canonical paths to local D: cache for serving
+    if path_str.startswith("gdrive://"):
+        rel      = path_str[len("gdrive://"):]   # "PropertyDocs/prop/cat/acct/file.pdf"
+        path_str = str(Path("D:/") / rel)
+
     p = Path(path_str).resolve()
 
     # Safety: restrict to known document roots only
     _allowed_roots = [
         Path("D:/PropertyDocs").resolve(),
         Path("D:/Scans").resolve(),
+        Path("C:/Scanner_MVP_Temp").resolve(),
     ]
     if not any(str(p).startswith(str(root)) for root in _allowed_roots):
         return jsonify({"error": "Access denied: path outside allowed directories"}), 403
@@ -1147,29 +1173,31 @@ def confirm_document(filename):
             )
             data["service_address"] = canonical_addr
 
-        path_override = (data.pop("_path_override", "") or "").strip()
+        path_override   = (data.pop("_path_override", "") or "").strip()
+        allow_overwrite = bool(data.pop("_allow_overwrite", False))
+        _d_available    = Path("D:/").exists()
         if path_override:
-            dest_path    = Path(path_override)
-            dest_folder  = dest_path.parent
-            new_filename = dest_path.name
+            dest_path       = Path(path_override)
+            dest_folder     = dest_path.parent
+            new_filename    = dest_path.name
+            _filing_to_temp = str(dest_path).startswith(str(TEMP_DIR))
         else:
-            dest_folder  = build_filing_path(data)
-            new_filename = build_filename(data, filename)
-            dest_path    = dest_folder / new_filename
+            _filing_base    = PROPERTY_DOCS_DIR if _d_available else TEMP_DIR
+            dest_folder     = build_filing_path(data, base=_filing_base)
+            new_filename    = build_filename(data, filename)
+            dest_path       = dest_folder / new_filename
+            _filing_to_temp = not _d_available
         dest_folder.mkdir(parents=True, exist_ok=True)
 
         # ── Destination collision check ─────────────────────────────
-        if dest_path.exists():
+        if dest_path.exists() and not allow_overwrite:
             log_activity(
                 f"Filing blocked — destination already exists: {dest_path.name}", "warning"
             )
             return jsonify({
-                "ok": False, "duplicate": True,
-                "reason": (
-                    "A file already exists at this location — "
-                    "this document may already be filed"
-                ),
-                "original": {"filed_on": "", "filed_path": str(dest_path)},
+                "error":         "duplicate_path",
+                "message":       "A file already exists at this filing path.",
+                "existing_path": str(dest_path),
             }), 409
 
         if working_path.exists():
@@ -1230,6 +1258,12 @@ def confirm_document(filename):
                 },
             }), 409
 
+        _rt_category = master_record["vendor_category"].lower().strip()
+        _rt_billing  = (
+            "Random"
+            if _rt_category in RANDOM_BILLING_CATEGORIES
+            else data.get("billing_frequency", "")
+        )
         upsert_reference_record({
             "vendor_name":       master_record["vendor_name"],
             "account_number":    master_record["account_number"],
@@ -1237,7 +1271,7 @@ def confirm_document(filename):
             "property":          master_record["property"],
             "unit":              master_record["unit"],
             "service_address":   master_record["service_address"],
-            "billing_frequency": data.get("billing_frequency", ""),
+            "billing_frequency": _rt_billing,
         })
 
         # Both CSV operations succeeded — safe to remove sidecar now.
@@ -1255,19 +1289,31 @@ def confirm_document(filename):
             f"${data.get('amount_due','?')} → {dest_path.parent.name}", "success")
 
         # ── Google Drive sync (non-blocking background uploads) ──────────
-        # dest_path = PROPERTY_DOCS_DIR / prop / category / account_code / filename
-        _filing_folder = dest_path.parent          # …/account_code/
+        # dest_path = [D:/PropertyDocs or C:/Scanner_MVP_Temp] / prop / cat / acct / filename
+        _filing_folder      = dest_path.parent          # …/account_code/
         _drive_category     = _filing_folder.parent.name   # category folder
         _drive_account_code = _filing_folder.name          # account_code folder
         _trigger_drive_sync(dest_path, data.get("property", ""),
                              category=_drive_category,
                              account_code=_drive_account_code)
 
-        return jsonify({
-            "ok": True,
-            "filed_path":   str(dest_path),
-            "new_filename": new_filename,
-        })
+        # When Drive is not configured and D: is unavailable, mark records as "temp"
+        # (_trigger_drive_sync returns early when unconfigured, leaving status as "")
+        _drive_configured = drive_sync.get_status()["status"] != "unconfigured"
+        if _filing_to_temp and not _drive_configured:
+            update_sync_status_by_path(str(dest_path), "temp")
+
+        response: dict = {"ok": True, "filed_path": str(dest_path), "new_filename": new_filename}
+        if _filing_to_temp and not _drive_configured:
+            response["warning"] = (
+                "D: drive unavailable and Drive not configured — "
+                "filed to local Temp storage. Use 'Import from Temp' when D: reconnects."
+            )
+        elif _filing_to_temp:
+            response["warning"] = (
+                "D: drive unavailable — filed to Temp, queued for Drive sync."
+            )
+        return jsonify(response)
 
     except Exception as e:
         with _queue_lock:
@@ -1335,18 +1381,35 @@ def post_activity_log():
     return jsonify({"ok": True})
 
 
+def _check_local_storage() -> bool:
+    """
+    Return True if D:/PropertyDocs is accessible (local document cache).
+    Creates the directory if D: is available but the folder doesn't exist yet.
+    """
+    try:
+        PROPERTY_DOCS_DIR.mkdir(parents=True, exist_ok=True)
+        return True
+    except Exception:
+        return PROPERTY_DOCS_DIR.exists()
+
+
 @app.route("/api/status", methods=["GET"])
 def get_status():
     with _queue_lock:
         pending = sum(1 for v in queue.values() if v["status"] == "pending")
         review  = sum(1 for v in queue.values() if v["status"] == "review")
         errors  = sum(1 for v in queue.values() if v["status"] == "error")
+    rows       = read_csv_as_dicts(MASTER_LOG_CSV)
+    temp_count = sum(1 for r in rows if r.get("sync_status", "") == "temp")
     return jsonify({
-        "incoming_folder": str(INCOMING_DIR),
-        "pending":         pending,
-        "review":          review,
-        "errors":          errors,
-        "api_key_loaded":  bool(os.getenv("ANTHROPIC_API_KEY")),
+        "incoming_folder":  str(INCOMING_DIR),
+        "pending":          pending,
+        "review":           review,
+        "errors":           errors,
+        "api_key_loaded":   bool(os.getenv("ANTHROPIC_API_KEY")),
+        "local_storage_ok": _check_local_storage(),
+        "d_drive_ok":       Path("D:/").exists(),
+        "temp_count":       temp_count,
     })
 
 
@@ -1510,7 +1573,12 @@ def delete_master_log_record_route(index):
         moved_to    = ""
         if delete_file and filed_path:
             try:
-                p = Path(filed_path)
+                # Resolve gdrive:// paths to local D: cache path
+                if filed_path.startswith("gdrive://"):
+                    rel = filed_path[len("gdrive://"):]
+                    p   = Path("D:/") / rel
+                else:
+                    p   = Path(filed_path)
                 if p.exists():
                     DELETED_DIR.mkdir(parents=True, exist_ok=True)
                     ts       = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -1565,12 +1633,48 @@ def delete_master_log_record_route(index):
 
 
 # ================================================================
+# ROUTES — Reference table check (modal live lookup)
+# ================================================================
+
+@app.route("/api/reference-check", methods=["POST"])
+def reference_check_route():
+    """
+    Lightweight reference-table lookup for the Review & File modal's
+    "Confirm Fields" button.
+
+    Accepts: { vendor_name, account_number, service_address }
+    Returns: { matched_fields: [...], match_count: N, matched: bool }
+    """
+    data = request.get_json(silent=True) or {}
+    extracted = {
+        "vendor_name_normalized": data.get("vendor_name", ""),
+        "vendor_name_raw":        data.get("vendor_name", ""),
+        "account_number":         data.get("account_number", ""),
+        "service_address":        data.get("service_address", ""),
+    }
+    ref_table = _get_reference_table()
+    _, count, details = match_reference_record(extracted, ref_table, min_matches=1)
+    return jsonify({
+        "matched_fields": list(details.keys()),
+        "match_count":    count,
+        "matched":        count >= 2,
+    })
+
+
+# ================================================================
 # ROUTES — Google Drive sync status
 # ================================================================
 
 @app.route("/api/sync-status", methods=["GET"])
 def get_sync_status():
-    return jsonify(drive_sync.get_status())
+    status = drive_sync.get_status()
+    # Augment with CSV-based unsynced count (rows where sync_status is pending or failed)
+    rows = read_csv_as_dicts(MASTER_LOG_CSV)
+    status["pending_count"] = sum(
+        1 for r in rows
+        if r.get("sync_status", "") in ("pending", "failed")
+    )
+    return jsonify(status)
 
 
 @app.route("/api/sync-retry", methods=["POST"])
@@ -1579,13 +1683,156 @@ def sync_retry():
     return jsonify({"ok": True, "message": "Re-queued failed uploads"})
 
 
+@app.route("/api/import-from-temp", methods=["POST"])
+def import_from_temp():
+    """
+    Move all files from C:/Scanner_MVP_Temp to D:/PropertyDocs/ (preserving
+    sub-folder structure), update CSV records, and queue for Drive sync.
+    Requires D: to be available.
+    """
+    if not Path("D:/").exists():
+        return jsonify({"error": "D: drive not available — connect the drive and retry"}), 503
+
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    PROPERTY_DOCS_DIR.mkdir(parents=True, exist_ok=True)
+
+    moved  = 0
+    errors = []
+
+    for src in sorted(TEMP_DIR.rglob("*")):
+        if not src.is_file():
+            continue
+        try:
+            rel  = src.relative_to(TEMP_DIR)
+            dest = PROPERTY_DOCS_DIR / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+
+            if not dest.exists():
+                shutil.move(str(src), str(dest))
+            else:
+                src.unlink()   # already at destination from a previous import
+
+            old_path = str(src).replace("\\", "/")
+            new_path = str(dest).replace("\\", "/")
+            update_storage_path(old_path, new_path, "pending")
+
+            # Queue for Drive upload using the folder structure from the path
+            parts = rel.parts   # (prop, cat, acct_code, filename) or subset
+            if len(parts) >= 4:
+                drive_sync.queue_pdf_upload(
+                    dest, parts[0], category=parts[1], account_code=parts[2]
+                )
+            elif len(parts) >= 1:
+                drive_sync.queue_pdf_upload(dest, parts[0])
+
+            moved += 1
+        except Exception as exc:
+            errors.append(f"{src.name}: {exc}")
+
+    # Prune empty temp sub-directories
+    for d in sorted(TEMP_DIR.rglob("*"), key=lambda p: len(p.parts), reverse=True):
+        if d.is_dir():
+            try:
+                d.rmdir()
+            except Exception:
+                pass
+
+    log_activity(f"Import from Temp: {moved} file(s) moved to D:/PropertyDocs/", "info")
+    return jsonify({"ok": True, "moved": moved, "errors": errors})
+
+
+@app.route("/api/flush-records", methods=["POST"])
+def flush_records():
+    """
+    Destructive: delete all master log records and move all filed PDFs to
+    D:/Scans/Deleted/.  Optionally also clears the reference table.
+
+    Required: { "confirm_token": "CONFIRM_FLUSH" }
+    Optional: { "reset_reference_table": true }  — only set for Full System Reset.
+              When false or absent, reference_table.csv is never touched.
+    """
+    import csv as _csv
+
+    data  = request.get_json(silent=True) or {}
+    token = data.get("confirm_token", "")
+    if token != "CONFIRM_FLUSH":
+        return jsonify({"ok": False, "error": "Missing or invalid confirm_token"}), 400
+
+    reset_ref = bool(data.get("reset_reference_table", False))
+
+    records      = get_all_master_records()
+    record_count = len(records)
+    files_moved  = 0
+    ts           = datetime.now().strftime("%Y%m%d_%H%M%S")
+    DELETED_DIR.mkdir(parents=True, exist_ok=True)
+
+    # Move every filed PDF to Deleted/
+    for r in records:
+        filed_path = (r.get("final_storage_path") or "").strip()
+        if filed_path:
+            if filed_path.startswith("gdrive://"):
+                rel = filed_path[len("gdrive://"):]
+                p   = Path("D:/") / rel
+            else:
+                p   = Path(filed_path)
+            if p.exists():
+                dest = DELETED_DIR / f"{ts}_{p.name}"
+                try:
+                    shutil.move(str(p), str(dest))
+                    files_moved += 1
+                except Exception as exc:
+                    print(f"[Flush] Could not move {filed_path}: {exc}")
+
+    # Clear master log — preserve header row only
+    master_path = Path(MASTER_LOG_CSV)
+    if master_path.exists():
+        with open(master_path, "r", newline="", encoding="utf-8") as fh:
+            fieldnames = _csv.DictReader(fh).fieldnames or []
+        with open(master_path, "w", newline="", encoding="utf-8") as fh:
+            _csv.DictWriter(fh, fieldnames=fieldnames).writeheader()
+
+    # Clear reference table only when explicitly requested (Full System Reset)
+    if reset_ref:
+        ref_path = Path(REFERENCE_CSV)
+        if ref_path.exists():
+            with open(ref_path, "r", newline="", encoding="utf-8") as fh:
+                fieldnames = _csv.DictReader(fh).fieldnames or []
+            with open(ref_path, "w", newline="", encoding="utf-8") as fh:
+                _csv.DictWriter(fh, fieldnames=fieldnames).writeheader()
+        # Invalidate cache after reference table wipe
+        global _ref_table_cache, _ref_table_mtime
+        _ref_table_cache = None
+        _ref_table_mtime = 0.0
+
+    action = "Full system reset" if reset_ref else "Flush documents"
+    log_activity(
+        f"{action}: {record_count} records deleted, {files_moved} files moved to Deleted/"
+        + (" + reference table cleared" if reset_ref else ""),
+        "warning",
+    )
+    return jsonify({"ok": True, "records_deleted": record_count, "files_moved": files_moved})
+
+
+@app.route("/api/export-master-log", methods=["GET"])
+def export_master_log():
+    """Return document_master_log.csv as a downloadable file attachment."""
+    path = Path(MASTER_LOG_CSV)
+    if not path.exists():
+        return jsonify({"error": "Master log not found"}), 404
+    return send_file(
+        str(path),
+        mimetype="text/csv",
+        as_attachment=True,
+        download_name=f"document_master_log_{datetime.now().strftime('%Y%m%d')}.csv",
+    )
+
+
 # ================================================================
 # ROUTES — Folder browser
 # ================================================================
 
 _DRIVE_LABEL_OVERRIDES: dict[str, str] = {
     "C": "Lenovo",
-    "D": "Ext HDD",
 }
 
 @app.route("/api/list-drives", methods=["GET"])
@@ -1623,6 +1870,9 @@ def browse_folder():
     path_str = path_str.strip().strip('"\'').replace("\\", "/")
     if not path_str:
         path_str = "C:/"
+    # Reject D: path requests when D: is not connected
+    if path_str.upper().startswith("D:") and not Path("D:/").exists():
+        return jsonify({"error": "D: drive not connected", "path": path_str, "items": []}), 503
     # Use os.path for reliable Windows drive-letter path handling
     path_str = _os.path.normpath(path_str).replace("\\", "/")
     try:
@@ -1869,7 +2119,13 @@ def get_coverage_matrix():
     for ref in ref_rows:
         acct          = (ref.get("account_number") or "").strip()
         property_     = (ref.get("property") or "").strip()
-        billing_freq  = (ref.get("billing_frequency") or "").strip()
+        ref_category  = (ref.get("vendor_category") or "").lower().strip()
+        # Meals and Entertainment vendors never have expected billing cycles
+        billing_freq  = (
+            "Random"
+            if ref_category in RANDOM_BILLING_CATEGORIES
+            else (ref.get("billing_frequency") or "").strip()
+        )
         acct_all_docs = all_docs_by_acct.get(acct, [])
         expected      = _billing_expected_months(billing_freq, months, acct_all_docs)
 
@@ -1957,7 +2213,8 @@ def _compute_path_dict(data: dict) -> dict:
         "account_number":         data.get("account_number", ""),
     }
     source_file = data.get("source_file", "document.pdf")
-    folder  = build_filing_path(adapted)
+    _base   = PROPERTY_DOCS_DIR if Path("D:/").exists() else TEMP_DIR
+    folder  = build_filing_path(adapted, base=_base)
     fname   = build_filename(adapted, source_file)
     full    = folder / fname
     return {

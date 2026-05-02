@@ -30,6 +30,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from csv_manager import MASTER_LOG_CSV, REFERENCE_CSV, update_sync_status_by_path, update_storage_path
+
 # ── optional dependency guard ──────────────────────────────────────────────
 try:
     from google.oauth2.credentials import Credentials
@@ -48,7 +50,7 @@ SCOPES           = ["https://www.googleapis.com/auth/drive"]
 CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "google_credentials.json")
 TOKEN_FILE       = os.getenv("GOOGLE_TOKEN_FILE",       "google_token.json")
 SYNC_QUEUE_FILE  = Path("data/sync_queue.json")
-DAILY_BACKUP_DIR = Path("backups")
+DAILY_BACKUP_DIR = Path("C:/Scanner_MVP_Backups")
 
 # Google Drive folder names
 _DRIVE_PROPERTY_DOCS = "PropertyDocs"
@@ -86,8 +88,8 @@ _DRIVE_FINANCIAL_SUBFOLDERS = [
 
 # Local AppData files to keep in sync
 _APP_DATA_FILES = [
-    Path("data/document_master_log.csv"),
-    Path("data/reference_table.csv"),
+    Path(MASTER_LOG_CSV),
+    Path(REFERENCE_CSV),
     Path("config.json"),
     Path("data/vendor_profiles.json"),
 ]
@@ -162,22 +164,38 @@ class GoogleDriveSync:
         """
         Non-blocking: queue a Drive file move to PropertyDocs/Deleted/.
 
-        local_filed_path is the local final_storage_path stored in the master
-        log, e.g. D:/PropertyDocs/3047 Sea Marsh Rd/Utilities/Water/bill.pdf.
-        The Drive folder is derived by replacing the local PropertyDocs root
-        with the Drive 'PropertyDocs/' prefix.
+        local_filed_path is the final_storage_path from the master log:
+          • "gdrive://PropertyDocs/..." — Drive-primary path (parse directly)
+          • "D:/PropertyDocs/..."       — local cache path (derive Drive folder)
+          • "C:/Scanner_MVP_Temp/..."   — temp path, never reached Drive → skip
         """
-        p = Path(local_filed_path)
+        p_str = (local_filed_path or "").strip()
+
+        if p_str.startswith("gdrive://"):
+            # Parse Drive folder directly from the canonical gdrive:// path
+            rel_parts    = p_str[len("gdrive://"):]        # "PropertyDocs/prop/cat/acct/file.pdf"
+            parts        = rel_parts.split("/")
+            drive_folder = "/".join(parts[:-1])            # "PropertyDocs/prop/cat/acct"
+            filename     = parts[-1]
+            self._enqueue({
+                "type":         "delete",
+                "path":         "",
+                "drive_folder": drive_folder,
+                "filename":     filename,
+            })
+            return
+
+        p = Path(p_str)
         try:
-            rel         = p.relative_to(Path("D:/PropertyDocs"))
+            rel          = p.relative_to(Path("D:/PropertyDocs"))
             drive_folder = "PropertyDocs/" + str(rel.parent).replace("\\", "/")
         except ValueError:
-            # Path not under PropertyDocs — skip Drive delete
-            print(f"[Drive] queue_file_delete: path not under PropertyDocs, skipping: {p}")
+            # Temp path or unknown root — file never reached Drive, nothing to delete there
+            print(f"[Drive] queue_file_delete: no Drive copy for {p_str!r}, skipping")
             return
         self._enqueue({
             "type":         "delete",
-            "path":         "",          # no local file to check
+            "path":         "",
             "drive_folder": drive_folder,
             "filename":     p.name,
         })
@@ -369,6 +387,12 @@ class GoogleDriveSync:
                     print(f"[Drive] ✓ Moved '{filename}' → PropertyDocs/Deleted/")
 
             self._remove_from_persisted(item)
+            # Update master log for PDF uploads — promote path to Drive canonical
+            if item_type == "pdf":
+                drive_path = self._build_drive_path(item)
+                update_storage_path(item.get("path", ""), drive_path, "synced")
+                # If file was filed to Temp, copy to D: cache now that D: may be back
+                self._cache_to_d_drive(item)
             with self._status_lock:
                 self._syncing_count = max(0, self._syncing_count - 1)
                 if self._syncing_count == 0:
@@ -381,10 +405,55 @@ class GoogleDriveSync:
                              ("connect", "timeout", "network", "ssl", "socket", "unreachable"))
             new_status = SyncStatus.OFFLINE if is_offline else SyncStatus.FAILED
             print(f"[Drive] Upload failed ({item.get('filename', '?')}): {e}")
+            # Update sync_status in master log for PDF uploads
+            if item.get("type", "") == "pdf":
+                update_sync_status_by_path(item.get("path", ""), "failed")
             self._add_to_persisted(item)
             with self._status_lock:
                 self._syncing_count = max(0, self._syncing_count - 1)
                 self._status = new_status
+
+    # ── D: local cache (post-Drive-upload) ──────────────────────────────────────
+
+    @staticmethod
+    def _build_drive_path(item: dict) -> str:
+        """Build the canonical gdrive:// path for a queued PDF upload item."""
+        parts = [_DRIVE_PROPERTY_DOCS, item["property"]]
+        if item.get("category"):
+            parts.append(item["category"])
+        if item.get("account_code"):
+            parts.append(item["account_code"])
+        parts.append(item["filename"])
+        return "gdrive://" + "/".join(parts)
+
+    @staticmethod
+    def _cache_to_d_drive(item: dict) -> None:
+        """
+        If a PDF was filed to C:/Scanner_MVP_Temp (D: unavailable at filing
+        time), copy it to D:/PropertyDocs/ now that a Drive upload succeeded
+        and D: may have come online since.
+
+        Best-effort only — silently skips if D: is still not connected.
+        Primary record is the Drive path (gdrive://); D: is the local cache.
+        """
+        src = Path(item.get("path", ""))
+        if not src.exists():
+            return
+        # Only act when the source is in the Temp fallback directory
+        try:
+            rel = src.relative_to(Path("C:/Scanner_MVP_Temp"))
+        except ValueError:
+            return   # Already on D: or another location — nothing to do
+        if not Path("D:/").exists():
+            return   # D: still not connected
+        dest = Path("D:/PropertyDocs") / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            if not dest.exists():
+                shutil.copy2(str(src), str(dest))
+                print(f"[Cache] Temp→D: ✓ {rel}")
+        except Exception as exc:
+            print(f"[Cache] Temp→D: copy failed ({src.name}): {exc}")
 
     # ── Google Drive API helpers ─────────────────────────────────────────────
 
@@ -572,8 +641,8 @@ class GoogleDriveSync:
 # ═══════════════════════════════════════════════════════════════════════════
 
 _BACKUP_SOURCES = [
-    Path("data/document_master_log.csv"),
-    Path("data/reference_table.csv"),
+    Path(MASTER_LOG_CSV),
+    Path(REFERENCE_CSV),
 ]
 _LAST_BACKUP_FILE = Path("data/last_backup_date.txt")
 

@@ -3,7 +3,7 @@ from datetime import datetime
 import json
 
 
-LOG_PATH = Path("D:/document_ai_system/scanner_mvp/logs/processing_log.jsonl")
+LOG_PATH = Path("data/logs/processing_log.jsonl")
 
 def log_processing_event(event: dict) -> None:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
